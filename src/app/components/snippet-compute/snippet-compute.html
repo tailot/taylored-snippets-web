@@ -1,5 +1,13 @@
 <div class="snippet-compute-container">
-    <textarea [(ngModel)]="snippetCode" (input)="onTextChange()" (ngModelChange)="onSnippetChange()"
-        placeholder="#!/usr/bin/env python3 ... #!/bin/sh ..."></textarea>
+    <mat-form-field class="full-width-textarea">
+      <mat-label>Code</mat-label>
+      <textarea matInput
+                [(ngModel)]="snippetCode"
+                (input)="onTextChange()"
+                (ngModelChange)="onSnippetChange()"
+                placeholder="#!/usr/bin/env python3 ... #!/bin/sh ..."
+                rows="5">
+      </textarea>
+    </mat-form-field>
     <button [disabled]="isPlayButtonDisabled">Play</button>
 </div>

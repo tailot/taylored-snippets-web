@@ -1,3 +1,11 @@
 <div class="snippet-text-container">
-  <textarea [(ngModel)]="text" (input)="onTextChange()" placeholder="Enter your text..."></textarea>
+  <mat-form-field class="full-width-textarea">
+    <mat-label>Text</mat-label>
+    <textarea matInput
+              [(ngModel)]="text"
+              (input)="onTextChange()"
+              placeholder="Enter your text..."
+              rows="5">
+    </textarea>
+  </mat-form-field>
 </div>

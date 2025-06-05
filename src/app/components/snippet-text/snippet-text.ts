@@ -8,7 +8,7 @@ import { Snippet } from '../sheet/sheet';
 @Component({
   selector: 'app-snippet-text',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule],
   templateUrl: './snippet-text.html',
   styleUrl: './snippet-text.sass'
 })

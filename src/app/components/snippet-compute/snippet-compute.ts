@@ -33,7 +33,7 @@ export const VALID_INTERPRETERS = [
 @Component({
   selector: 'app-snippet-compute',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule],
   templateUrl: './snippet-compute.html',
   styleUrl: './snippet-compute.sass'
 })

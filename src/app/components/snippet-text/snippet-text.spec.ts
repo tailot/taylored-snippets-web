@@ -23,8 +23,8 @@ describe('SnippetTextComponent', () => {
   });
 
   it('should display text snippet placeholder content', () => {
-    const pElement = fixture.debugElement.nativeElement.querySelector('p');
-    expect(pElement).toBeTruthy();
-    expect(pElement.textContent).toContain('This is a Text Snippet');
+    const textAreaElement = fixture.debugElement.nativeElement.querySelector('textarea');
+    expect(textAreaElement).toBeTruthy(); // Check if the textarea exists
+    expect(textAreaElement.placeholder).toContain('Enter your text...'); // Check its placeholder
   });
 });

@@ -116,4 +116,27 @@ describe('SheetComponent', () => {
     expect(specificMessageExists).toBeFalsy();
   });
 
+  it('should have a saveSheet method', () => {
+    expect(component.saveSheet).toBeDefined();
+    // Optionally, check if it's a function
+    expect(typeof component.saveSheet).toBe('function');
+  });
+
+  it('should render a save button', () => {
+    const saveButton = fixture.debugElement.query(By.css('button[aria-label="Save sheet"]'));
+    expect(saveButton).toBeTruthy();
+    const saveIcon = saveButton.query(By.css('mat-icon'));
+    expect(saveIcon).toBeTruthy();
+    expect(saveIcon.nativeElement.textContent.trim()).toBe('save');
+  });
+
+  it('should call saveSheet method when save button is clicked', () => {
+    spyOn(component, 'saveSheet'); // Spy on the saveSheet method
+    const saveButton = fixture.debugElement.query(By.css('button[aria-label="Save sheet"]'));
+
+    expect(saveButton).toBeTruthy();
+    saveButton.nativeElement.click();
+
+    expect(component.saveSheet).toHaveBeenCalled();
+  });
 });

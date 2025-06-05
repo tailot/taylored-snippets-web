@@ -13,6 +13,7 @@ export interface Snippet {
 @Component({
   selector: 'app-sheet',
   imports: [CommonModule, MatCardModule, MatButtonModule, SnippetText, SnippetCompute],
+  standalone: true,
   templateUrl: './sheet.html',
   styleUrl: './sheet.sass'
 })
@@ -22,5 +23,8 @@ export class Sheet {
 
   addSnippet(type: 'text' | 'compute'): void {
     this.snippets.push({ id: this.nextId++, type: type });
+  }
+  removeSnippet(id: number): void {
+    this.snippets = this.snippets.filter(snippet => snippet.id !== id);
   }
 }

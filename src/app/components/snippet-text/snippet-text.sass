@@ -1,17 +1,34 @@
 .snippet-text-container
-  border: 1px dashed #ccc
-  padding: 10px
-  margin: 5px
-  background-color: #f9f9f9
-  min-width: 450px
+  display: flex
+  flex-direction: column
+  height: 100%
   width: 100%
-  height: 100% // Added to make the container itself take full height
+  min-width: 450px
+  min-height: 270px
+  padding: 10px
   box-sizing: border-box
 
   textarea
+    flex-grow: 1
     width: 100%
     height: 100%
-    box-sizing: border-box
-    border: none // Optional: removes default textarea border
-    resize: none // Optional: removes resize handle
-    padding: 5px // Optional: adds some internal padding to the textarea
+    margin-bottom: 10px
+    font-family: monospace
+    border: 1px solid #ccc
+    padding: 8px
+    resize: none
+
+  button
+    padding: 10px 15px
+    background-color: #007bff
+    color: white
+    border: none
+    border-radius: 4px
+    cursor: pointer
+
+    &:disabled
+      background-color: #ccc
+      cursor: not-allowed
+
+    &:hover:not(:disabled)
+      background-color: #0056b3

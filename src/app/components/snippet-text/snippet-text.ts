@@ -1,13 +1,28 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Good practice for standalone components
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+import { Snippet } from '../sheet/sheet';
+
 
 @Component({
   selector: 'app-snippet-text',
-  standalone: true, // Ensure it is standalone
-  imports: [CommonModule], // Add CommonModule
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './snippet-text.html',
   styleUrl: './snippet-text.sass'
 })
-export class SnippetText {
+export class SnippetText implements Snippet {
+  type: 'text' = 'text';
 
+  @Input() id!: number;
+  @Output() empty = new EventEmitter<number>();
+
+  text: string = '';
+
+  onTextChange(): void {
+    if (this.text.trim() === '') {
+      this.empty.emit(this.id);
+    }
+  }
 }

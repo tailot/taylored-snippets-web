@@ -2,32 +2,34 @@
   display: flex
   flex-direction: column
   height: 100%
-  width: 100% // Ensure it takes full width of its parent
-  min-width: 450px
-  padding: 10px // Optional padding
+  width: 100%
+  min-width: 460px
+  min-height: 270px
+  padding: 10px
   box-sizing: border-box
 
   textarea
-    flex-grow: 1 // Allows textarea to take available vertical space
-    width: 100% // Take full width
-    margin-bottom: 10px // Space before the button
-    // Add other styling as needed, e.g., resize: none;
-    font-family: monospace // Good for code
-    border: 1px solid #ccc // Basic border
-    padding: 8px // Padding inside textarea
+    flex-grow: 1
+    width: 100%
+    margin-bottom: 10px
+    font-family: monospace
+    border: 1px solid #ccc
+    padding: 8px
+    resize: none
 
   button
-    // Style for the button
+    align-self: center
     padding: 10px 15px
-    background-color: #007bff // Example primary color
+    background-color: #007bff
     color: white
     border: none
     border-radius: 4px
     cursor: pointer
+    max-width: 200px
 
     &:disabled
-      background-color: #ccc // Disabled state color
+      background-color: #ccc
       cursor: not-allowed
 
     &:hover:not(:disabled)
-      background-color: #0056b3 // Darker on hover when enabled
+      background-color: #0056b3

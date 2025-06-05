@@ -8,10 +8,10 @@ describe('SnippetTextComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ SnippetText ], // It's standalone
+      imports: [SnippetText], // It's standalone
       providers: [provideZonelessChangeDetection()]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(SnippetText);
     component = fixture.componentInstance;

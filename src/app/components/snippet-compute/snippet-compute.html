@@ -1,4 +1,5 @@
 <div class="snippet-compute-container">
-  <textarea [(ngModel)]="snippetCode" (ngModelChange)="onSnippetChange()" placeholder="Enter your script here..."></textarea>
-  <button [disabled]="isPlayButtonDisabled">Play</button>
+    <textarea [(ngModel)]="snippetCode" (input)="onTextChange()" (ngModelChange)="onSnippetChange()"
+        placeholder="#!/usr/bin/env python3 ... #!/bin/sh ..."></textarea>
+    <button [disabled]="isPlayButtonDisabled">Play</button>
 </div>

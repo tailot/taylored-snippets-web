@@ -162,4 +162,69 @@ describe('SnippetComputeComponent', () => {
       expect(component.isPlayButtonDisabled).toBe(true);
     });
   });
+
+  describe('getTayloredBlock method', () => {
+    beforeEach(() => {
+      // Set default values for id and snippetCode for these tests
+      component.id = 123;
+      component.snippetCode = 'console.log("Hello, Taylored!");';
+      // fixture.detectChanges(); // Not strictly necessary for method testing unless it reads from DOM
+    });
+
+    it('should return a string', () => {
+      const result = component.getTayloredBlock();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should return a string in the correct taylored block format', () => {
+      const result = component.getTayloredBlock();
+      // Regex to check the overall structure, ID, and presence of Base64 timestamp
+      // It doesn't validate the Base64 content itself here, just that it looks like Base64
+      const tayloredRegex = /^<taylored number="\d+" compute="[A-Za-z0-9+/=]+">.*?<\/taylored>$/s;
+      expect(result).toMatch(tayloredRegex);
+    });
+
+    it('should use the component id in the "number" attribute', () => {
+      component.id = 456; // Change id to test
+      const result = component.getTayloredBlock();
+      expect(result).toContain(`number="${component.id}"`);
+    });
+
+    it('should use the component snippetCode as the content of the block', () => {
+      component.snippetCode = 'alert("Test Code");'; // Change snippetCode to test
+      const result = component.getTayloredBlock();
+      expect(result).toContain(`>${component.snippetCode}</taylored>`);
+    });
+
+    it('should have a valid Base64 encoded timestamp in the "compute" attribute', () => {
+      const result = component.getTayloredBlock();
+      const computeMatch = result.match(/compute="([^"]+)"/);
+      expect(computeMatch).toBeTruthy();
+      expect(computeMatch!.length).toBeGreaterThan(1);
+      const base64Timestamp = computeMatch![1];
+
+      // Try to decode it
+      let decodedTimestamp: string = '';
+      let errorDecoding: any = null;
+      try {
+        decodedTimestamp = atob(base64Timestamp);
+      } catch (e) {
+        errorDecoding = e;
+      }
+
+      expect(errorDecoding).toBeNull('Timestamp should be valid Base64');
+      expect(decodedTimestamp).toBeTruthy('Decoded timestamp should not be empty');
+      expect(/^\d+$/.test(decodedTimestamp)).toBe(true, 'Decoded timestamp should be a string of digits');
+
+      const numericTimestamp = parseInt(decodedTimestamp, 10);
+      expect(isNaN(numericTimestamp)).toBe(false, 'Parsed timestamp should be a number');
+
+      // Check if it's a reasonable timestamp (e.g., not too far in the past or future)
+      // This is a loose check. Current time in ms.
+      const now = Date.now();
+      // Allowing a reasonable delta (e.g., 5 seconds) for test execution time
+      expect(numericTimestamp).toBeGreaterThanOrEqual(now - 5000, 'Timestamp seems too old');
+      expect(numericTimestamp).toBeLessThanOrEqual(now + 5000, 'Timestamp seems too far in the future');
+    });
+  });
 });

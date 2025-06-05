@@ -48,6 +48,12 @@ export class SnippetCompute implements Snippet {
   @Input() id!: number;
   @Output() empty = new EventEmitter<number>();
 
+  getTayloredBlock(): string {
+    const timestamp = Date.now().toString();
+    const encodedTimestamp = btoa(timestamp);
+    return `<taylored number="${this.id}" compute="${encodedTimestamp}">${this.snippetCode}</taylored>`;
+  }
+
   onSnippetChange(): void {
     this.isPlayButtonDisabled = true;
 

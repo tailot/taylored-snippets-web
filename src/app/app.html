@@ -1,1 +1,16 @@
-<app-sheet></app-sheet>
+<mat-toolbar color="primary">
+  <span>My Application</span>
+  <span class="spacer"></span>
+  <button mat-icon-button (click)="sidenav.toggle()" aria-label="Open menu icon">
+    <mat-icon>menu</mat-icon>
+  </button>
+</mat-toolbar>
+
+<mat-sidenav-container class="app-sidenav-container">
+  <mat-sidenav #sidenav mode="over" position="end">
+    <app-side-menu></app-side-menu>
+  </mat-sidenav>
+  <mat-sidenav-content>
+    <app-sheet></app-sheet>
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -1,0 +1,32 @@
+// Make sure the app fills the viewport height
+:host
+  display: flex
+  flex-direction: column
+  height: 100vh
+
+mat-toolbar
+  position: sticky // Make toolbar sticky
+  top: 0 // Stick to the top
+  z-index: 1000 // Ensure it's above other content
+
+.spacer
+  flex: 1 1 auto // Pushes items to the right
+
+.app-sidenav-container
+  flex: 1 // Takes up remaining vertical space
+  // overflow: auto // If content inside needs scrolling, not the container itself
+
+// Ensure app-sheet and side menu content can scroll if needed,
+// but the sidenav container itself does not show scrollbars
+// unless absolutely necessary (which flex:1 should prevent for the container).
+mat-sidenav-content
+  height: 100%
+  overflow-y: auto // Allow scrolling within the content area
+
+// The side-menu itself has styles in its own .sass file for width and background
+// src/app/components/side-menu/side-menu.sass already has:
+// :host
+//   display: block
+//   width: 250px
+//   background-color: #f0f0f0
+//   height: 100%

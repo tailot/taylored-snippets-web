@@ -9,6 +9,7 @@ import { SnippetCompute } from '../snippet-compute/snippet-compute';
 export interface Snippet {
   id: number;
   type: 'text' | 'compute';
+  getTayloredBlock(): XMLDocument;
 }
 
 @Component({

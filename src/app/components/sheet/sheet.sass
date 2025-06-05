@@ -1,0 +1,41 @@
+// Styles for Angular CDK Drag and Drop
+
+// Style for the element being dragged (the preview)
+.cdk-drag-preview
+  box-sizing: border-box
+  border-radius: 4px
+  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+              0 8px 10px 1px rgba(0, 0, 0, 0.14),
+              0 3px 14px 2px rgba(0, 0, 0, 0.12)
+  z-index: 1000 // Ensure it's above other elements
+
+// Style for the placeholder element in the list
+.cdk-drag-placeholder
+  opacity: 0.3
+  border: 1px dashed #ccc
+  background: #f9f9f9
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1)
+
+// Style for the original items in the list while one is being dragged
+.cdk-drop-list-dragging .cdk-drag
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1)
+
+// Add a subtle transition for all cdk-drag elements for smoother animations
+.cdk-drag
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1)
+
+// Basic styling for the snippet container within the sheet, if not already present
+// This ensures that the drag handles are well-defined visually.
+.snippet-container
+  margin-bottom: 10px // Add some space between snippets
+  padding: 5px
+  border: 1px solid transparent // Add a border to define draggable area a bit
+
+  // Optional: Add a hover effect to indicate draggable items
+  &:hover
+    border-color: #eee
+
+// Ensure the drop list itself has some basic styling if needed
+.sheet-card-content
+  min-height: 60px // Give some minimum height for the drop zone to be visible
+  border-radius: 4px // Match other card styling

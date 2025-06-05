@@ -1,7 +1,11 @@
 <div class="sheet-container">
   <mat-card class="sheet-card">
-    <mat-card-header>
+    <mat-card-header class="sheet-card-header">
       <mat-card-title>Sheet Content</mat-card-title>
+      <span class="header-spacer"></span>
+      <button mat-icon-button class="save-button" aria-label="Save sheet" (click)="saveSheet()">
+        <mat-icon>save</mat-icon>
+      </button>
     </mat-card-header>
     <mat-card-content class="sheet-card-content">
       @if (snippets.length === 0) {
@@ -25,8 +29,14 @@
       }
     </mat-card-content>
     <mat-card-actions class="sheet-card-actions">
-      <button mat-raised-button color="primary" (click)="addSnippet('text')">Add Text Snippet</button>
-      <button mat-raised-button color="accent" (click)="addSnippet('compute')">Add Compute Snippet</button>
+      <button mat-raised-button color="primary" (click)="addSnippet('text')">
+        <mat-icon>text_fields</mat-icon>
+        Add Text Snippet
+      </button>
+      <button mat-raised-button color="accent" (click)="addSnippet('compute')">
+        <mat-icon>functions</mat-icon>
+        Add Compute Snippet
+      </button>
     </mat-card-actions>
   </mat-card>
 </div>

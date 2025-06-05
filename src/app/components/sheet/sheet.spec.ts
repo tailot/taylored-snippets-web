@@ -193,4 +193,68 @@ describe('SheetComponent', () => {
 
     expect(component.saveSheet).toHaveBeenCalled();
   });
+
+  describe('addSnippet method direct tests', () => {
+    // Import SnippetText and SnippetCompute to use instanceof
+    let SnippetTextType: typeof import('../snippet-text/snippet-text').SnippetText;
+    let SnippetComputeType: typeof import('../snippet-compute/snippet-compute').SnippetCompute;
+
+    beforeAll(async () => {
+      SnippetTextType = (await import('../snippet-text/snippet-text')).SnippetText;
+      SnippetComputeType = (await import('../snippet-compute/snippet-compute')).SnippetCompute;
+    });
+
+    beforeEach(() => {
+      // Reset snippets before each test in this block
+      component.snippets = [];
+      // Reset nextId if necessary, though component.addSnippet handles its increment
+      // (Reflection: component internal 'nextId' is not reset here, which is fine as it mimics continuous use)
+    });
+
+    it('should add an instance of SnippetText when type is "text"', () => {
+      component.addSnippet('text');
+      expect(component.snippets.length).toBe(1);
+      const newSnippet = component.snippets[0];
+      expect(newSnippet).toBeInstanceOf(SnippetTextType);
+      expect(newSnippet.type).toBe('text');
+      expect(newSnippet.id).toBeDefined(); // ID should be assigned
+    });
+
+    it('should add an instance of SnippetCompute when type is "compute"', () => {
+      component.addSnippet('compute');
+      expect(component.snippets.length).toBe(1);
+      const newSnippet = component.snippets[0];
+      expect(newSnippet).toBeInstanceOf(SnippetComputeType);
+      expect(newSnippet.type).toBe('compute');
+      expect(newSnippet.id).toBeDefined(); // ID should be assigned
+    });
+
+    it('should assign unique IDs to subsequently added snippets', () => {
+      component.addSnippet('text'); // First snippet
+      component.addSnippet('compute'); // Second snippet
+      expect(component.snippets.length).toBe(2);
+      expect(component.snippets[0].id).not.toBe(component.snippets[1].id);
+    });
+
+    it('should ensure snippets added via addSnippet have a callable getTayloredBlock method returning XMLDocument', () => {
+      // Test for 'text' snippet
+      component.addSnippet('text');
+      let textSnippet = component.snippets[0];
+      expect(typeof textSnippet.getTayloredBlock).toBe('function');
+      let textXmlDoc = textSnippet.getTayloredBlock();
+      expect(textXmlDoc).toBeInstanceOf(XMLDocument);
+      expect(textXmlDoc.documentElement.tagName).toBe('taylored');
+      expect(textXmlDoc.documentElement.getAttribute('text')).toBe('true');
+
+      // Reset for compute snippet (or use a new component instance for isolation)
+      component.snippets = [];
+      component.addSnippet('compute');
+      let computeSnippet = component.snippets[0];
+      expect(typeof computeSnippet.getTayloredBlock).toBe('function');
+      let computeXmlDoc = computeSnippet.getTayloredBlock();
+      expect(computeXmlDoc).toBeInstanceOf(XMLDocument);
+      expect(computeXmlDoc.documentElement.tagName).toBe('taylored');
+      expect(computeXmlDoc.documentElement.getAttribute('compute')).toBeTruthy();
+    });
+  });
 });

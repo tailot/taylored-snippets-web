@@ -24,7 +24,18 @@ export class Sheet {
   private nextId = 0;
 
   addSnippet(type: 'text' | 'compute'): void {
-    this.snippets.push({ id: this.nextId++, type: type });
+    let newSnippet: Snippet;
+    const currentId = this.nextId++;
+
+    if (type === 'text') {
+      newSnippet = new SnippetText();
+    } else { // type === 'compute'
+      newSnippet = new SnippetCompute();
+    }
+
+    newSnippet.id = currentId;
+    // The 'type' property is already set in the respective class constructors/definitions.
+    this.snippets.push(newSnippet);
   }
   removeSnippet(id: number): void {
     this.snippets = this.snippets.filter(snippet => snippet.id !== id);

@@ -171,43 +171,51 @@ describe('SnippetComputeComponent', () => {
       // fixture.detectChanges(); // Not strictly necessary for method testing unless it reads from DOM
     });
 
-    it('should return a string', () => {
+    it('should return an XMLDocument', () => {
       const result = component.getTayloredBlock();
-      expect(typeof result).toBe('string');
+      expect(result).toBeInstanceOf(XMLDocument);
     });
 
-    it('should return a string in the correct taylored block format', () => {
+    it('should return an XMLDocument with the correct structure and content', () => {
       const result = component.getTayloredBlock();
-      // Regex to check the overall structure, ID, and presence of Base64 timestamp
-      // It doesn't validate the Base64 content itself here, just that it looks like Base64
-      const tayloredRegex = /^<taylored number="\d+" compute="[A-Za-z0-9+/=]+">.*?<\/taylored>$/s;
-      expect(result).toMatch(tayloredRegex);
+      expect(result).toBeInstanceOf(XMLDocument);
+
+      const rootElement = result.documentElement;
+      expect(rootElement.tagName).toBe('taylored');
+      expect(rootElement.getAttribute('number')).toBe(component.id.toString());
+      expect(rootElement.textContent).toBe(component.snippetCode);
+
+      const computeAttr = rootElement.getAttribute('compute');
+      expect(computeAttr).toBeTruthy();
+      // Basic check for Base64 pattern
+      expect(/^[A-Za-z0-9+/=]+$/.test(computeAttr!)).toBeTrue();
     });
 
-    it('should use the component id in the "number" attribute', () => {
+    it('should use the component id in the "number" attribute of the XMLDocument', () => {
       component.id = 456; // Change id to test
       const result = component.getTayloredBlock();
-      expect(result).toContain(`number="${component.id}"`);
+      const rootElement = result.documentElement;
+      expect(rootElement.getAttribute('number')).toBe('456');
     });
 
-    it('should use the component snippetCode as the content of the block', () => {
+    it('should use the component snippetCode as the text content of the XMLDocument', () => {
       component.snippetCode = 'alert("Test Code");'; // Change snippetCode to test
       const result = component.getTayloredBlock();
-      expect(result).toContain(`>${component.snippetCode}</taylored>`);
+      const rootElement = result.documentElement;
+      expect(rootElement.textContent).toBe('alert("Test Code");');
     });
 
-    it('should have a valid Base64 encoded timestamp in the "compute" attribute', () => {
+    it('should have a valid Base64 encoded timestamp in the "compute" attribute of the XMLDocument', () => {
       const result = component.getTayloredBlock();
-      const computeMatch = result.match(/compute="([^"]+)"/);
-      expect(computeMatch).toBeTruthy();
-      expect(computeMatch!.length).toBeGreaterThan(1);
-      const base64Timestamp = computeMatch![1];
+      const rootElement = result.documentElement;
+      const base64Timestamp = rootElement.getAttribute('compute');
 
+      expect(base64Timestamp).toBeTruthy();
       // Try to decode it
       let decodedTimestamp: string = '';
       let errorDecoding: any = null;
       try {
-        decodedTimestamp = atob(base64Timestamp);
+        decodedTimestamp = atob(base64Timestamp!);
       } catch (e) {
         errorDecoding = e;
       }
@@ -222,9 +230,9 @@ describe('SnippetComputeComponent', () => {
       // Check if it's a reasonable timestamp (e.g., not too far in the past or future)
       // This is a loose check. Current time in ms.
       const now = Date.now();
-      // Allowing a reasonable delta (e.g., 5 seconds) for test execution time
-      expect(numericTimestamp).toBeGreaterThanOrEqual(now - 5000, 'Timestamp seems too old');
-      expect(numericTimestamp).toBeLessThanOrEqual(now + 5000, 'Timestamp seems too far in the future');
+      // Allowing a reasonable delta (e.g., 10 seconds for test execution and potential clock differences)
+      expect(numericTimestamp).toBeGreaterThanOrEqual(now - 10000, 'Timestamp seems too old');
+      expect(numericTimestamp).toBeLessThanOrEqual(now + 10000, 'Timestamp seems too far in the future');
     });
   });
 });

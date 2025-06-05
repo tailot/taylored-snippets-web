@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'; // Removed fakeAsync, tick
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
 
 import { Sheet } from './sheet';
 
@@ -95,11 +95,16 @@ describe('SheetComponent', () => {
   });
 
   // Failing test - with additional detectChanges
+  // Failing test - with additional detectChanges
   it('should not display "No snippets added yet" message when snippets array is not empty', async () => {
     component.addSnippet('text');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();      // <<< The crucial addition for this test
+    // fixture.detectChanges(); // Initial CD
+    // await fixture.whenStable();
+    // fixture.detectChanges(); // Second CD
+
+    // Try forcing change detection via the component's own ChangeDetectorRef
+    const cdr = fixture.componentRef.injector.get(ChangeDetectorRef);
+    cdr.detectChanges();
 
     const messageElement = fixture.debugElement.query(By.css('mat-card-content > p:first-child'));
 

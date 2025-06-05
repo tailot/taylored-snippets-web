@@ -1,0 +1,33 @@
+.sheet-container
+  display: flex
+  justify-content: center
+  align-items: center
+  min-height: 100vh
+  padding: 20px
+  box-sizing: border-box
+
+.sheet-card
+  min-height: 500px
+  width: 80%
+  max-width: 1000px
+  display: flex
+  flex-direction: column
+
+.sheet-card-content
+  flex-grow: 1
+  display: flex
+  flex-direction: column
+  align-items: center
+  padding: 16px
+
+  .snippet-container // This was previously nested in .sheet-card-content in SCSS
+    margin-bottom: 10px
+    width: 100%
+    display: flex
+    justify-content: center
+
+.sheet-card-actions
+  display: flex
+  justify-content: center
+  padding: 16px
+  gap: 10px

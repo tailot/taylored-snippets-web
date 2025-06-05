@@ -1,13 +1,26 @@
 import { Component } from '@angular/core';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { CommonModule } from '@angular/common'; // For *ngFor, *ngIf, etc.
 import { SnippetText } from '../snippet-text/snippet-text';
 import { SnippetCompute } from '../snippet-compute/snippet-compute';
 
+export interface Snippet {
+  id: number;
+  type: 'text' | 'compute';
+}
+
 @Component({
   selector: 'app-sheet',
-  imports: [SnippetCompute, SnippetText],
+  imports: [CommonModule, MatCardModule, MatButtonModule, SnippetText, SnippetCompute],
   templateUrl: './sheet.html',
   styleUrl: './sheet.sass'
 })
 export class Sheet {
+  snippets: Snippet[] = [];
+  private nextId = 0;
 
+  addSnippet(type: 'text' | 'compute'): void {
+    this.snippets.push({ id: this.nextId++, type: type });
+  }
 }

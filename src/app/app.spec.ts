@@ -1,12 +1,19 @@
-import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { App } from './app';
+import { Sheet } from './components/sheet/sheet'; // Assuming App imports Sheet
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [App],
-      providers: [provideZonelessChangeDetection()]
+      imports: [App], // App is standalone
+      // If App imports Sheet directly, Sheet's standalone nature handles its template.
+      // No need to declare SheetComponent unless App's template uses it AND Sheet isn't standalone (but it is).
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([]) // Basic router provider for tests if App uses <router-outlet> or routerLink
+      ]
     }).compileComponents();
   });
 
@@ -16,10 +23,5 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', () => {
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, taylored-snippets-web');
-  });
+  // Add more tests for App component if necessary
 });

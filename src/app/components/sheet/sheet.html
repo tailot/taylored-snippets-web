@@ -1,1 +1,18 @@
-<p>sheet works!</p>
+<div class="sheet-container">
+  <mat-card class="sheet-card">
+    <mat-card-header>
+      <mat-card-title>Sheet Content</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="sheet-card-content">
+      <p *ngIf="snippets.length === 0">No snippets added yet. Click a button to add one!</p>
+      <div *ngFor="let snippet of snippets; let i = index" [ngSwitch]="snippet.type" class="snippet-container">
+        <app-snippet-text *ngSwitchCase="'text'"></app-snippet-text>
+        <app-snippet-compute *ngSwitchCase="'compute'"></app-snippet-compute>
+      </div>
+    </mat-card-content>
+    <mat-card-actions class="sheet-card-actions">
+      <button mat-raised-button color="primary" (click)="addSnippet('text')">Add Text Snippet</button>
+      <button mat-raised-button color="accent" (click)="addSnippet('compute')">Add Compute Snippet</button>
+    </mat-card-actions>
+  </mat-card>
+</div>

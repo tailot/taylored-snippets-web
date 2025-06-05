@@ -3,24 +3,29 @@ import { CommonModule } from '@angular/common'; // Good practice for standalone 
 import { FormsModule } from '@angular/forms'; // Required for ngModel
 
 export const VALID_INTERPRETERS = [
+  'awk',
   'bash',
-  'ksh',
-  'zsh',
   'csh',
-  'tcsh',
-  'python3',
-  'perl',
-  'ruby',
-  'node',
-  'ts-node',
-  'php',
-  'java',
-  'groovy',
-  'lua5.4',
-  'R',
-  'gawk',
-  'tcl',
   'expect',
+  'gawk',
+  'groovy',
+  'java',
+  'ksh',
+  'lua',
+  'lua5.4',
+  'node',
+  'perl',
+  'php',
+  'python',
+  'python3',
+  'Rscript',
+  'ruby',
+  'sed',
+  'sh',
+  'tcl',
+  'tcsh',
+  'ts-node',
+  'zsh',
 ];
 
 @Component({
@@ -52,7 +57,7 @@ export class SnippetCompute {
     // e.g. #!/usr/bin/python3 -> python3
     // e.g. #!bash -> bash
     // The first line should strictly be the shebang and interpreter, nothing else.
-    const shebangMatch = firstLine.match(/^#!(?:\/(?:usr\/)?bin\/)?([a-zA-Z0-9._-]+)$/);
+    const shebangMatch = firstLine.match(/^#!(?:\/(?:usr\/)?bin\/env\s+|\/(?:usr\/|usr\/local\/)?bin\/)?([a-zA-Z0-9._-]+)$/);
 
     if (shebangMatch && shebangMatch[1]) {
       const interpreter = shebangMatch[1];

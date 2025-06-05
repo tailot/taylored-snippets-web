@@ -23,6 +23,11 @@ export class SnippetText implements Snippet {
 
   text: string = '';
 
+  getTayloredBlock(): XMLDocument {
+    const xmlString = `<taylored number="${this.id}" text="true">${this.text}</taylored>`;
+    return new DOMParser().parseFromString(xmlString, "text/xml");
+  }
+
   onTextChange(): void {
     if (this.text.trim() === '') {
       this.empty.emit(this.id);

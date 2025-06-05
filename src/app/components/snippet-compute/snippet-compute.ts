@@ -48,10 +48,11 @@ export class SnippetCompute implements Snippet {
   @Input() id!: number;
   @Output() empty = new EventEmitter<number>();
 
-  getTayloredBlock(): string {
+  getTayloredBlock(): XMLDocument {
     const timestamp = Date.now().toString();
     const encodedTimestamp = btoa(timestamp);
-    return `<taylored number="${this.id}" compute="${encodedTimestamp}">${this.snippetCode}</taylored>`;
+    const xmlString = `<taylored number="${this.id}" compute="${encodedTimestamp}">${this.snippetCode}</taylored>`;
+    return new DOMParser().parseFromString(xmlString, "text/xml");
   }
 
   onSnippetChange(): void {

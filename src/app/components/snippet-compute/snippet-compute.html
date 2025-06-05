@@ -1,0 +1,15 @@
+<div class="snippet-compute-container">
+    <mat-form-field class="full-width-textarea">
+      <mat-label>Code</mat-label>
+      <textarea matInput
+                cdkTextareaAutosize
+                [(ngModel)]="snippetCode"
+                (input)="onTextChange()"
+                (ngModelChange)="onSnippetChange()"
+                placeholder="#!/usr/bin/env python3 ... #!/bin/sh ..."
+                cdkAutosizeMinRows="5"
+                cdkAutosizeMaxRows="20">
+      </textarea>
+    </mat-form-field>
+    <button matButton="elevated" [disabled]="isPlayButtonDisabled">Play</button>
+</div>

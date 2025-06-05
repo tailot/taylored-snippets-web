@@ -1,1 +1,13 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat
+@use 'static-assets/theme-colors' as app-colors
+@use 'static-assets/material-icons.css'
+
+html
+    @include mat.theme((
+        color: (
+            primary: app-colors.$primary-palette,
+            tertiary: app-colors.$tertiary-palette,
+        ),
+        typography: 'Roboto, "Helvetica Neue", sans-serif',
+        density: 0
+    ))

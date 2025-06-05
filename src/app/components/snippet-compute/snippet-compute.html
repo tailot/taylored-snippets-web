@@ -1,4 +1,4 @@
 <div class="snippet-compute-container">
-  <p>This is a <strong>Compute Snippet</strong>. Calculation logic and results would be displayed here.</p>
-  <!-- Example: <input type="text" placeholder="Enter expression..."><button>Compute</button><div>Result: ...</div> -->
+  <textarea [(ngModel)]="snippetCode" (ngModelChange)="onSnippetChange()" placeholder="Enter your script here..."></textarea>
+  <button [disabled]="isPlayButtonDisabled">Play</button>
 </div>

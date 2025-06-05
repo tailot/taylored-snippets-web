@@ -1,7 +1,32 @@
 .snippet-compute-container
-  border: 1px dashed #add
-  padding: 10px
-  margin: 5px
-  background-color: #f0f9f9
-  width: 90%
+  display: flex
+  flex-direction: column
+  height: 100%
+  width: 100% // Ensure it takes full width of its parent
+  padding: 10px // Optional padding
   box-sizing: border-box
+
+  textarea
+    flex-grow: 1 // Allows textarea to take available vertical space
+    width: 100% // Take full width
+    margin-bottom: 10px // Space before the button
+    // Add other styling as needed, e.g., resize: none;
+    font-family: monospace // Good for code
+    border: 1px solid #ccc // Basic border
+    padding: 8px // Padding inside textarea
+
+  button
+    // Style for the button
+    padding: 10px 15px
+    background-color: #007bff // Example primary color
+    color: white
+    border: none
+    border-radius: 4px
+    cursor: pointer
+
+    &:disabled
+      background-color: #ccc // Disabled state color
+      cursor: not-allowed
+
+    &:hover:not(:disabled)
+      background-color: #0056b3 // Darker on hover when enabled

@@ -7,12 +7,14 @@
         <mat-icon>save</mat-icon>
       </button>
     </mat-card-header>
-    <mat-card-content class="sheet-card-content">
+    <mat-card-content class="sheet-card-content"
+                      cdkDropList
+                      (cdkDropListDropped)="drop($event)">
       @if (snippets.length === 0) {
         <p>No snippets added yet. Click a button to add one!</p>
       }
       @for (snippet of snippets; track snippet.id; let i = $index) {
-        <div class="snippet-container">
+        <div class="snippet-container" cdkDrag>
           @switch (snippet.type) {
             @case ('text') {
               <app-snippet-text [id]="snippet.id"

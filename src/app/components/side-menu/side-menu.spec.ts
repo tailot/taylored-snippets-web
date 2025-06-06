@@ -38,7 +38,7 @@ describe('SideMenuComponent', () => {
     ];
     component.menuItems = mockMenuItems;
     fixture.detectChanges();
-    const listItems = nativeElement.querySelectorAll('mat-nav-list a');
+    const listItems = nativeElement.querySelectorAll('button[mat-list-item]');
     expect(listItems.length).toBe(2);
     expect(listItems[0].textContent).toContain('Test Label 1');
     expect(listItems[1].textContent).toContain('Test Label 2');
@@ -47,14 +47,14 @@ describe('SideMenuComponent', () => {
   it('should render no items if menuItems is an empty array', () => {
     component.menuItems = [];
     fixture.detectChanges();
-    const listItems = nativeElement.querySelectorAll('mat-nav-list a');
+    const listItems = nativeElement.querySelectorAll('button[mat-list-item]');
     expect(listItems.length).toBe(0);
   });
 
   it('should render no items if menuItems is undefined (component initializes it, but good to check boundary)', () => {
     component.menuItems = [];
     fixture.detectChanges();
-    const listItems = nativeElement.querySelectorAll('mat-nav-list a');
+    const listItems = nativeElement.querySelectorAll('button[mat-list-item]');
     expect(listItems.length).toBe(0);
   });
 
@@ -65,10 +65,10 @@ describe('SideMenuComponent', () => {
     ];
     component.menuItems = mockMenuItems as MenuItem[];
     fixture.detectChanges();
-    const listItems = nativeElement.querySelectorAll('mat-nav-list a');
+    const listItems = nativeElement.querySelectorAll('button[mat-list-item]');
     expect(listItems.length).toBe(2);
     expect(listItems[0].textContent).toContain('Real Label');
-    expect(listItems[1].textContent).toBe('');
+    expect(listItems[1].textContent?.trim()).toBe('');
   });
 
 });

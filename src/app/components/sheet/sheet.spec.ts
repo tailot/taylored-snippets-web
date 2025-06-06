@@ -123,6 +123,9 @@ describe('SheetComponent', () => {
   });
 
   it('should render a save button in the header, correctly aligned', () => {
+    component.addSnippet('text');
+    fixture.detectChanges();
+
     // Check for mat-card-header with the correct class
     const cardHeader = fixture.debugElement.query(By.css('mat-card-header.sheet-card-header'));
     expect(cardHeader).toBeTruthy();
@@ -171,6 +174,8 @@ describe('SheetComponent', () => {
   });
 
   it('should call saveSheet method when save button is clicked', () => {
+    component.addSnippet('text');
+    fixture.detectChanges();
     spyOn(component, 'saveSheet'); // Spy on the saveSheet method
     const saveButton = fixture.debugElement.query(By.css('button[aria-label="Save sheet"]'));
 

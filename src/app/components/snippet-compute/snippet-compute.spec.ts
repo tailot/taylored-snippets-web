@@ -235,4 +235,49 @@ describe('SnippetComputeComponent', () => {
       expect(numericTimestamp).toBeLessThanOrEqual(now + 10000, 'Timestamp seems too far in the future');
     });
   });
+
+  describe('output text area', () => {
+    it('should not display the output text area if output is undefined', () => {
+      component.output = undefined;
+      fixture.detectChanges();
+      const outputTextArea = fixture.debugElement.nativeElement.querySelector('textarea[matInput][readonly]');
+      // The main textarea is not readonly, the output one is.
+      // So if we find a readonly textarea, it must be the output one.
+      expect(outputTextArea).toBeNull();
+    });
+
+    it('should not display the output text area if output is an empty string', () => {
+      component.output = '';
+      fixture.detectChanges();
+      // We need to be more specific if there are multiple textareas.
+      // Assuming the output textarea is the only one with 'readonly'
+      const outputTextArea = fixture.debugElement.nativeElement.querySelector('textarea[matInput][readonly]');
+      expect(outputTextArea).toBeNull(); // *ngIf should remove it from the DOM
+    });
+
+    it('should display the output text area if output has content', () => {
+      component.output = 'Some output text';
+      fixture.detectChanges();
+      const outputTextArea = fixture.debugElement.nativeElement.querySelector('textarea[matInput][readonly]');
+      expect(outputTextArea).toBeTruthy();
+      expect(outputTextArea.value).toBe('Some output text');
+    });
+
+    it('should display the output text area with correct content', () => {
+      const testOutput = 'This is a test output value.';
+      component.output = testOutput;
+      fixture.detectChanges();
+      const outputTextArea = fixture.debugElement.nativeElement.querySelector('textarea[matInput][readonly]');
+      expect(outputTextArea).toBeTruthy();
+      expect(outputTextArea.value).toBe(testOutput);
+    });
+
+    it('output text area should be readonly', () => {
+      component.output = 'Some output';
+      fixture.detectChanges();
+      const outputTextArea = fixture.debugElement.nativeElement.querySelector('textarea[matInput][readonly]');
+      expect(outputTextArea).toBeTruthy();
+      expect(outputTextArea.hasAttribute('readonly')).toBe(true);
+    });
+  });
 });

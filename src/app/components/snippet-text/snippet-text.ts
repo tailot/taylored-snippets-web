@@ -19,10 +19,10 @@ import { SnippetCompute } from '../snippet-compute/snippet-compute';
 export class SnippetText implements Snippet {
   type: 'text' = 'text';
 
+  @Input() value: string = '';
   @Input() id!: number;
   @Output() updateSnippet = new EventEmitter<SnippetText | SnippetCompute>();
 
-  value: string = '';
 
   getTayloredBlock(): XMLDocument {
     const xmlString = `<taylored number="${this.id}" text="true">${this.value}</taylored>`;

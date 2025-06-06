@@ -43,10 +43,10 @@ export const VALID_INTERPRETERS = [
 })
 export class SnippetCompute implements Snippet {
   type: 'compute' = 'compute';
-  value: string = '';
   isPlayButtonDisabled: boolean = true;
-  output?: string;
-
+  
+  @Input() output?: string;
+  @Input() value: string = '';
   @Input() id!: number;
   @Output() updateSnippet = new EventEmitter<SnippetText | SnippetCompute>();
 

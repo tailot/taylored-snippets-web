@@ -44,7 +44,28 @@ export class Sheet {
   }
 
   saveSheet(): void {
-    // TODO: Implement save functionality
+    if (this.snippets.length === 0) {
+      return;
+    }
+
+    const serializableSnippets = this.snippets.map(snippet => ({
+      id: snippet.id,
+      type: snippet.type,
+      output: snippet.output
+    }));
+
+    const jsonString = JSON.stringify(serializableSnippets, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'snippets.json';
+    document.body.appendChild(anchor); // Required for Firefox
+    anchor.click();
+    document.body.removeChild(anchor); // Clean up
+
+    URL.revokeObjectURL(url);
   }
 
   drop(event: CdkDragDrop<Snippet[]>): void {

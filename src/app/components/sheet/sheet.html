@@ -2,9 +2,11 @@
   <mat-card class="sheet-card">
     <mat-card-header class="sheet-card-header">
       <span class="header-spacer"></span>
-      <button mat-icon-button aria-label="Save sheet" (click)="saveSheet()">
-        <mat-icon>save</mat-icon>
-      </button>
+      @if (snippets.length > 0) {
+        <button mat-icon-button aria-label="Save sheet" (click)="saveSheet()">
+          <mat-icon>save</mat-icon>
+        </button>
+      }
     </mat-card-header>
     <mat-card-content class="sheet-card-content"
                       cdkDropList

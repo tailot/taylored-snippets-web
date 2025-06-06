@@ -50,4 +50,8 @@ export class Sheet {
   drop(event: CdkDragDrop<Snippet[]>): void {
     moveItemInArray(this.snippets, event.previousIndex, event.currentIndex);
   }
+
+  populateSnippets(newSnippets: Snippet[]): void {
+    this.snippets = newSnippets;
+  }
 }

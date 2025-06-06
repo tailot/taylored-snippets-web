@@ -1,6 +1,7 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { MenuItem } from './menu-item';
+import { Snippet } from '../sheet/sheet';
 
 @Component({
   selector: 'app-side-menu',
@@ -11,4 +12,9 @@ import { MenuItem } from './menu-item';
 })
 export class SideMenuComponent {
   @Input() menuItems: MenuItem[] = [];
+  @Output() snippetsSelected = new EventEmitter<Snippet[]>();
+
+  onItemClick(item: MenuItem) {
+    this.snippetsSelected.emit(item.snippets);
+  }
 }

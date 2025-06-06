@@ -1,5 +1,5 @@
 <mat-nav-list>
   @for (item of menuItems; track item.label) {
-    <a mat-list-item href="#">{{ item.label }}</a>
+    <button mat-list-item (click)="onItemClick(item)">{{ item.label }}</button>
   }
 </mat-nav-list>

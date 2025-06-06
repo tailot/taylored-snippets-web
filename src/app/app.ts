@@ -1,14 +1,16 @@
-import { Component, ViewChild } from '@angular/core'; // Added ViewChild
-import { Sheet } from './components/sheet/sheet';
-import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav'; // Added MatSidenav
+import { Component, ViewChild } from '@angular/core';
+import { Sheet, Snippet } from './components/sheet/sheet'; // Snippet import corretto
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { SideMenuComponent } from './components/side-menu/side-menu';
-import { CommonModule } from '@angular/common'; // Import CommonModule
+import { CommonModule } from '@angular/common';
+import { MenuItem } from './components/side-menu/menu-item';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
   imports: [
     Sheet,
     MatSidenavModule,
@@ -16,13 +18,14 @@ import { CommonModule } from '@angular/common'; // Import CommonModule
     MatToolbarModule,
     MatIconModule,
     SideMenuComponent,
-    CommonModule // Added CommonModule
+    CommonModule
   ],
   templateUrl: './app.html',
   styleUrl: './app.sass'
 })
 export class App {
   protected title = 'taylored-snippets-web';
+  @ViewChild('sidenav') sidenav!: MatSidenav;
 
-  @ViewChild('sidenav') sidenav!: MatSidenav; // Added ViewChild for sidenav
+  public sideMenuItems: MenuItem[] = [];
 }

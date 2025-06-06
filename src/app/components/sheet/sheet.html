@@ -3,32 +3,28 @@
     <mat-card-header class="sheet-card-header">
       <span class="header-spacer"></span>
       @if (snippets.length > 0) {
-        <button mat-icon-button aria-label="Save sheet" (click)="saveSheet()">
-          <mat-icon>save</mat-icon>
-        </button>
+      <button mat-icon-button aria-label="Save sheet" (click)="saveSheet()">
+        <mat-icon>save</mat-icon>
+      </button>
       }
     </mat-card-header>
-    <mat-card-content class="sheet-card-content"
-                      cdkDropList
-                      (cdkDropListDropped)="drop($event)">
+    <mat-card-content class="sheet-card-content" cdkDropList (cdkDropListDropped)="drop($event)">
       @if (snippets.length === 0) {
-        <p>No snippets added yet. Click a button to add one!</p>
+      <p>No snippets added yet. Click a button to add one!</p>
       }
       @for (snippet of snippets; track snippet.id; let i = $index) {
-        <div class="snippet-container" cdkDrag>
-          @switch (snippet.type) {
-            @case ('text') {
-              <app-snippet-text [id]="snippet.id"
-                                (empty)="removeSnippet(snippet.id)">
-              </app-snippet-text>
-            }
-            @case ('compute') {
-              <app-snippet-compute [id]="snippet.id"
-                                   (empty)="removeSnippet(snippet.id)">
-              </app-snippet-compute>
-            }
-          }
-        </div>
+      <div class="snippet-container" cdkDrag>
+        @switch (snippet.type) {
+        @case ('text') {
+        <app-snippet-text [id]="snippet.id" (updateSnippet)="updateSnippet($event)">
+        </app-snippet-text>
+        }
+        @case ('compute') {
+        <app-snippet-compute [id]="snippet.id" (updateSnippet)="updateSnippet($event)">
+        </app-snippet-compute>
+        }
+        }
+      </div>
       }
     </mat-card-content>
     <mat-card-actions class="sheet-card-actions">

@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TextFieldModule } from '@angular/cdk/text-field';
 
 import { Snippet } from '../sheet/sheet';
+import { SnippetCompute } from '../snippet-compute/snippet-compute';
 
 
 @Component({
@@ -19,7 +20,7 @@ export class SnippetText implements Snippet {
   type: 'text' = 'text';
 
   @Input() id!: number;
-  @Output() empty = new EventEmitter<number>();
+  @Output() updateSnippet = new EventEmitter<SnippetText | SnippetCompute>();
 
   value: string = '';
 
@@ -29,8 +30,6 @@ export class SnippetText implements Snippet {
   }
 
   onTextChange(): void {
-    if (this.value.trim() === '') {
-      this.empty.emit(this.id);
-    }
+    this.updateSnippet.emit(this);
   }
 }

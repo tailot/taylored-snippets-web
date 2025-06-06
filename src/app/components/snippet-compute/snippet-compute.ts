@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatButtonModule } from '@angular/material/button';
 import { Snippet } from '../sheet/sheet';
+import { SnippetText } from '../snippet-text/snippet-text';
 
 export const VALID_INTERPRETERS = [
   'awk',
@@ -47,7 +48,7 @@ export class SnippetCompute implements Snippet {
   output?: string;
 
   @Input() id!: number;
-  @Output() empty = new EventEmitter<number>();
+  @Output() updateSnippet = new EventEmitter<SnippetText | SnippetCompute>();
 
   getTayloredBlock(): XMLDocument {
     const timestamp = Date.now().toString();
@@ -77,8 +78,6 @@ export class SnippetCompute implements Snippet {
         if (shebangMatch && shebangMatch[1]) {
           const interpreter = shebangMatch[1];
           if (VALID_INTERPRETERS.includes(interpreter)) {
-            // A script is runnable if it has a valid shebang on the first line
-            // AND there is something after that first line (even an empty line from a trailing newline).
             if (lines.length > 1) {
               this.isPlayButtonDisabled = false;
             }
@@ -88,9 +87,6 @@ export class SnippetCompute implements Snippet {
     }
   }
   onTextChange(): void {
-    if (this.value.trim() === '') {
-      this.isPlayButtonDisabled = true;
-      this.empty.emit(this.id);
-    }
+    this.updateSnippet.emit(this);
   }
 }

@@ -1,13 +1,8 @@
 <div class="snippet-text-container">
   <mat-form-field class="full-width-textarea">
     <mat-label>Text</mat-label>
-    <textarea matInput
-              cdkTextareaAutosize
-          [(ngModel)]="value"
-              (input)="onTextChange()"
-              placeholder="Enter your text..."
-              cdkAutosizeMinRows="5"
-              cdkAutosizeMaxRows="20">
+    <textarea matInput cdkTextareaAutosize [(ngModel)]="value" (input)="onTextChange()" placeholder="Enter your text..."
+      cdkAutosizeMinRows="5" cdkAutosizeMaxRows="20">
     </textarea>
   </mat-form-field>
 </div>

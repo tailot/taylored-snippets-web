@@ -40,8 +40,15 @@ export class Sheet {
     // The 'type' property is already set in the respective class constructors/definitions.
     this.snippets.push(newSnippet);
   }
-  removeSnippet(id: number): void {
-    this.snippets = this.snippets.filter(snippet => snippet.id !== id);
+  updateSnippet(ret: SnippetText | SnippetCompute): void {
+    if (ret.value === '') {
+      this.snippets = this.snippets.filter(snippet => snippet.id !== ret.id);
+    } else {
+      const index = this.snippets.findIndex(snippet => snippet.id === ret.id);
+      if (index !== -1) {
+        this.snippets[index] = ret;
+      }
+    }
   }
 
   saveSheet(): void {
@@ -114,9 +121,9 @@ export class Sheet {
         const hydratedSnippets: Snippet[] = [];
         for (const item of parsedData) {
           if (typeof item !== 'object' || item === null ||
-              typeof item.id !== 'number' ||
-              typeof item.type !== 'string' ||
-              (item.type !== 'text' && item.type !== 'compute')) {
+            typeof item.id !== 'number' ||
+            typeof item.type !== 'string' ||
+            (item.type !== 'text' && item.type !== 'compute')) {
             console.error('Invalid item structure in parsed data. Aborting.');
             return;
           }

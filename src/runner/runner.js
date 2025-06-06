@@ -3,7 +3,7 @@
 
 const http = require('http');
 const { Server } = require("socket.io");
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const simpleGit = require('simple-git');
 const tmp = require('tmp');
 const fs = require('fs').promises;
@@ -47,17 +47,22 @@ io.on('connection', (socket) => {
       await fs.writeFile(xmlFilePath, xmlData);
       await git.add(xmlFilePath);
       await git.commit('Add runner.xml');
-      const command = 'npx taylored --automatic xml main';
-      exec(command, { cwd: tempDirPath }, (error, stdout, stderr) => {
-        if (error) {
-          socket.emit('tayloredRunError', { error: `Execution failed: ${error.message}` });
-          return;
-        }
-        if (stderr) {
-          console.warn(`Command "${command}" produced an error output (stderr): ${stderr}`);
-          socket.emit('tayloredError', { error: stderr });
-        }
-        socket.emit('tayloredOutput', { output: stdout });
+      const tayloredProcess = spawn('npx', ['taylored', '--automatic', 'xml', 'main'], { cwd: tempDirPath });
+
+      tayloredProcess.stdout.on('data', (data) => {
+        socket.emit('tayloredOutput', { output: data.toString() });
+      });
+
+      tayloredProcess.stderr.on('data', (data) => {
+        socket.emit('tayloredError', { error: data.toString() });
+      });
+
+      tayloredProcess.on('error', (error) => {
+        socket.emit('tayloredRunError', { error: `Execution failed: ${error.message}` });
+      });
+
+      tayloredProcess.on('close', (code) => {
+        console.log(`Command finished with code ${code}`);
       });
     } catch (err) {
       socket.emit('tayloredRunError', { error: `Server-side error: ${err.message}` });

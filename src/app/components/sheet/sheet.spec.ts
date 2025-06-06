@@ -122,8 +122,9 @@ describe('SheetComponent', () => {
     expect(typeof component.saveSheet).toBe('function');
   });
 
-  it('should render a save button in the header, correctly aligned', () => {
+  it('should render a save button in the header, correctly aligned', async () => { // Made async
     component.addSnippet('text');
+    await fixture.whenStable(); // Added await whenStable
     fixture.detectChanges();
 
     // Check for mat-card-header with the correct class

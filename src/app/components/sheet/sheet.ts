@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, HostListener } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -74,5 +74,81 @@ export class Sheet {
 
   populateSnippets(newSnippets: Snippet[]): void {
     this.snippets = newSnippets;
+  }
+
+  @HostListener('dragover', ['$event'])
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  @HostListener('drop', ['$event'])
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const files = event.dataTransfer?.files;
+
+    if (files && files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const text = reader.result as string;
+        let parsedData;
+
+        try {
+          parsedData = JSON.parse(text);
+        } catch (error) {
+          console.error('Error parsing JSON:', error);
+          return;
+        }
+
+        if (!Array.isArray(parsedData)) {
+          console.error('Parsed data is not an array.');
+          return;
+        }
+
+        const hydratedSnippets: Snippet[] = [];
+        for (const item of parsedData) {
+          if (typeof item !== 'object' || item === null ||
+              typeof item.id !== 'number' ||
+              typeof item.type !== 'string' ||
+              (item.type !== 'text' && item.type !== 'compute')) {
+            console.error('Invalid item structure in parsed data. Aborting.');
+            return;
+          }
+
+          let newSnippet: Snippet;
+          if (item.type === 'text') {
+            newSnippet = new SnippetText();
+          } else { // item.type === 'compute'
+            newSnippet = new SnippetCompute();
+          }
+
+          newSnippet.id = item.id;
+          if (typeof item.output === 'string') {
+            newSnippet.output = item.output;
+          }
+
+          hydratedSnippets.push(newSnippet);
+        }
+
+        this.snippets = hydratedSnippets;
+        if (this.snippets.length === 0) {
+          this.nextId = 0;
+        } else {
+          this.nextId = Math.max(...this.snippets.map(s => s.id)) + 1;
+        }
+      };
+
+      reader.onerror = (error) => {
+        console.error('Error reading file:', error);
+      };
+
+      reader.readAsText(file);
+    } else {
+      console.log('No files dropped');
+    }
   }
 }

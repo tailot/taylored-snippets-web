@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
+import { MenuItem } from './menu-item';
 
 @Component({
   selector: 'app-side-menu',
@@ -9,5 +10,5 @@ import { MatListModule } from '@angular/material/list';
   styleUrl: './side-menu.sass'
 })
 export class SideMenuComponent {
-
+  @Input() menuItems: MenuItem[] = [];
 }

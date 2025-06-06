@@ -1,27 +1,71 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { By } from '@angular/platform-browser';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+
 import { App } from './app';
-import { Sheet } from './components/sheet/sheet'; // Assuming App imports Sheet
+// App è standalone e importa già MatToolbarModule, MatIconModule, SideMenuComponent, etc.
+// Quindi non dovrebbero essere necessari qui a meno di casi specifici di override o testing profondo.
 
 describe('App', () => {
+  let fixture: ComponentFixture<App>;
+  let component: App;
+  let nativeElement: HTMLElement;
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [App], // App is standalone
-      // If App imports Sheet directly, Sheet's standalone nature handles its template.
-      // No need to declare SheetComponent unless App's template uses it AND Sheet isn't standalone (but it is).
+      imports: [
+        App, // App è standalone e importa ciò che serve
+        NoopAnimationsModule // Necessario per i componenti Material Design
+      ],
       providers: [
         provideZonelessChangeDetection(),
-        provideRouter([]) // Basic router provider for tests if App uses <router-outlet> or routerLink
+        provideRouter([])
       ]
     }).compileComponents();
+
+    fixture = TestBed.createComponent(App);
+    component = fixture.componentInstance;
+    nativeElement = fixture.nativeElement;
+    // fixture.detectChanges() sarà chiamata nei singoli test dopo aver manipolato lo stato del componente
   });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    fixture.detectChanges(); // Chiamata iniziale per il setup
+    expect(component).toBeTruthy();
   });
 
-  // Add more tests for App component if necessary
+  it('should NOT display the menu button if sideMenuItems is empty', () => {
+    // component.sideMenuItems è già [] di default dopo le nostre modifiche
+    fixture.detectChanges(); // Applica l'associazione dati basata su sideMenuItems vuoto
+
+    // Cerca il pulsante del menu. Ci aspettiamo che NON esista nel DOM a causa di @if.
+    const buttonElement = nativeElement.querySelector('button[aria-label="Open menu icon"]');
+
+    expect(buttonElement).toBeNull();
+  });
+
+  it('should DISPLAY the menu button if sideMenuItems has items', () => {
+    // Modifica sideMenuItems per includere almeno un elemento.
+    // La struttura esatta di Snippet non è cruciale qui, solo che l'array non sia vuoto.
+    // Per il mock di Snippet, dobbiamo assicurarci che sia conforme all'interfaccia Snippet.
+    // L'interfaccia Snippet in sheet.ts è: id: number; type: string; getTayloredBlock: () => Document;
+    component.sideMenuItems = [
+      {
+        label: 'Test Item',
+        snippets: [{ id: 1, type: 'text', getTayloredBlock: () => new Document() }] // Mock snippet base
+      }
+    ];
+    fixture.detectChanges(); // Applica l'associazione dati
+
+    const buttonElement = nativeElement.querySelector('button[aria-label="Open menu icon"]');
+    expect(buttonElement).not.toBeNull();
+
+    // Verifica anche l'icona per maggiore sicurezza, se il bottone esistesse ma l'icona fosse nascosta
+    const menuIcon = buttonElement?.querySelector('mat-icon');
+    expect(menuIcon?.textContent?.trim()).toBe('menu');
+  });
+
+  // Aggiungere qui altri test per App component se necessario
 });

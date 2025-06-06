@@ -1,59 +1,65 @@
-# TayloredSnippetsWeb
+# Project Taylored Runner
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.0.1.
+This project includes a Node.js service (`src/runner.js`) that listens for Socket.IO events to execute the `taylored` command on provided XML data.
 
-## Development server
+## Features
 
-To start a local development server, run:
+*   Receives XML data via a `tayloredRun` Socket.IO event.
+*   Temporarily stores the XML in a local git repository.
+*   Executes `taylored --automatic xml` on the data.
+*   Streams output and errors back to the connected client.
+*   Cleans up temporary files after execution.
 
-```bash
-ng serve
-```
+## Prerequisites
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+*   Node.js (v14.x or later recommended)
+*   npm (comes with Node.js)
 
-## Code scaffolding
+## Setup and Running
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+1.  **Navigate to the service directory:**
+    ```bash
+    cd src
+    ```
 
-```bash
-ng generate component component-name
-```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+3.  **Run the server:**
+    ```bash
+    node runner.js
+    ```
+    The server will start, by default, on port 3000. You can set the `PORT` environment variable to use a different port:
+    ```bash
+    PORT=4000 node runner.js
+    ```
 
-```bash
-ng generate --help
-```
+## Socket.IO API
 
-## Building
+The server listens for and emits the following Socket.IO events:
 
-To build the project run:
+### Client Emits
 
-```bash
-ng build
-```
+*   **`tayloredRun`**:
+    *   **Payload**: `String` - A valid XML string that `taylored` can process.
+    *   **Description**: Sends an XML string to the server for processing with `taylored --automatic xml`.
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### Server Emits
 
-## Running unit tests
+*   **`tayloredOutput`**:
+    *   **Payload**: `Object` - `{ output: '...' }`
+    *   **Description**: Emitted when the `taylored` command successfully produces standard output. The `output` field contains the `stdout` string.
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+*   **`tayloredError`**:
+    *   **Payload**: `Object` - `{ error: '...' }`
+    *   **Description**: Emitted if the `taylored` command writes to `stderr`. This might include warnings or non-critical errors from `taylored`. The `error` field contains the `stderr` string.
 
-```bash
-ng test
-```
+*   **`tayloredRunError`**:
+    *   **Payload**: `Object` - `{ error: '...' }`
+    *   **Description**: Emitted if there's a general error during the processing of the `tayloredRun` event (e.g., invalid input, file system error, git error, `taylored` command execution failure). The `error` field contains a descriptive error message.
 
-## Running end-to-end tests
+## License
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

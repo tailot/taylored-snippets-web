@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { SnippetText } from './snippet-text';
+import { FormsModule } from '@angular/forms'; // Required for ngModel
+import { MatInputModule } from '@angular/material/input'; // Required for matInput
+import { NoopAnimationsModule } from '@angular/platform-browser/animations'; // Required for some Material components
 
 describe('SnippetTextComponent', () => {
   let component: SnippetText;
@@ -8,31 +11,61 @@ describe('SnippetTextComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SnippetText], // It's standalone
+      imports: [
+        SnippetText, // It's standalone
+        FormsModule,      // For ngModel
+        MatInputModule,   // For matInput used in textarea
+        NoopAnimationsModule // Disable animations for tests
+      ],
       providers: [provideZonelessChangeDetection()]
     })
       .compileComponents();
 
     fixture = TestBed.createComponent(SnippetText);
     component = fixture.componentInstance;
-    fixture.detectChanges();
+    // Initialize with a default id for tests that might need it
+    component.id = 1;
+    fixture.detectChanges(); // Initial binding
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should display text snippet placeholder content', () => {
+  it('should initialize with an empty value string', () => {
+    expect(component.value).toBe('');
+  });
+
+  it('should display text snippet placeholder content in textarea', () => {
     const textAreaElement = fixture.debugElement.nativeElement.querySelector('textarea');
     expect(textAreaElement).toBeTruthy(); // Check if the textarea exists
     expect(textAreaElement.placeholder).toContain('Enter your text...'); // Check its placeholder
   });
 
-  describe('getTayloredBlock method', () => {
+  describe('value property two-way binding', () => {
+    it('should update textarea when component value changes', async () => {
+      component.value = 'New text value';
+      fixture.detectChanges(); // Trigger change detection
+      await fixture.whenStable(); // Wait for async operations like ngModel to settle
+      const textareaElement = fixture.debugElement.nativeElement.querySelector('textarea');
+      expect(textareaElement.value).toBe('New text value');
+    });
+
+    it('should update component value when textarea input changes', async () => {
+      const textareaElement = fixture.debugElement.nativeElement.querySelector('textarea');
+      textareaElement.value = 'User input text';
+      textareaElement.dispatchEvent(new Event('input')); // Simulate input event
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(component.value).toBe('User input text');
+    });
+  });
+
+  describe('getTayloredBlock method (using value)', () => {
     beforeEach(() => {
-      // Set default values for id and text for these tests
+      // Set default values for id and value for these tests
       component.id = 789;
-      component.text = 'This is some sample text.';
+      component.value = 'This is some sample text.';
       // fixture.detectChanges(); // Not strictly necessary for method testing
     });
 
@@ -41,15 +74,15 @@ describe('SnippetTextComponent', () => {
       expect(result).toBeInstanceOf(XMLDocument);
     });
 
-    it('should return an XMLDocument with the correct structure and content', () => {
+    it('should return an XMLDocument with the correct structure and content using value', () => {
       const result = component.getTayloredBlock();
       expect(result).toBeInstanceOf(XMLDocument);
 
       const rootElement = result.documentElement;
       expect(rootElement.tagName).toBe('taylored');
       expect(rootElement.getAttribute('number')).toBe(component.id.toString());
-      expect(rootElement.getAttribute('text')).toBe('true');
-      expect(rootElement.textContent).toBe(component.text);
+      expect(rootElement.getAttribute('text')).toBe('true'); // This attribute distinguishes text snippets in XML
+      expect(rootElement.textContent).toBe(component.value); // Check component.value
     });
 
     it('should use the component id in the "number" attribute of the XMLDocument', () => {
@@ -59,8 +92,8 @@ describe('SnippetTextComponent', () => {
       expect(rootElement.getAttribute('number')).toBe('101');
     });
 
-    it('should use the component text as the text content of the XMLDocument', () => {
-      component.text = 'More detailed text for testing purposes.'; // Change text to test
+    it('should use the component value as the text content of the XMLDocument', () => {
+      component.value = 'More detailed text for testing purposes.'; // Change value to test
       const result = component.getTayloredBlock();
       const rootElement = result.documentElement;
       expect(rootElement.textContent).toBe('More detailed text for testing purposes.');

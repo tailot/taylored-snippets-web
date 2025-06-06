@@ -12,6 +12,7 @@ export interface Snippet {
   type: 'text' | 'compute';
   getTayloredBlock(): XMLDocument;
   output?: string;
+  value: string;
 }
 
 @Component({
@@ -51,7 +52,8 @@ export class Sheet {
     const serializableSnippets = this.snippets.map(snippet => ({
       id: snippet.id,
       type: snippet.type,
-      output: snippet.output
+      output: snippet.output,
+      value: snippet.value // Added this line
     }));
 
     const jsonString = JSON.stringify(serializableSnippets, null, 2);
@@ -129,6 +131,13 @@ export class Sheet {
           newSnippet.id = item.id;
           if (typeof item.output === 'string') {
             newSnippet.output = item.output;
+          }
+          if (typeof item.value === 'string') { // Added this block
+            newSnippet.value = item.value;
+          } else {
+            // If value is not present or not a string, initialize with empty string or default.
+            // This handles cases where older format JSON might be dropped.
+            newSnippet.value = '';
           }
 
           hydratedSnippets.push(newSnippet);

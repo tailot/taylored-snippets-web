@@ -54,7 +54,7 @@ describe('App', () => {
     component.sideMenuItems = [
       {
         label: 'Test Item',
-        snippets: [{ id: 1, type: 'text', getTayloredBlock: () => new Document() }] // Mock snippet base
+        snippets: [{ id: 1, type: 'text', value: '', getTayloredBlock: () => new Document() }] // Mock snippet base
       }
     ];
     fixture.detectChanges(); // Applica l'associazione dati

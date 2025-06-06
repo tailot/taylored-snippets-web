@@ -42,7 +42,7 @@ export const VALID_INTERPRETERS = [
 })
 export class SnippetCompute implements Snippet {
   type: 'compute' = 'compute';
-  snippetCode: string = '';
+  value: string = '';
   isPlayButtonDisabled: boolean = true;
   output?: string;
 
@@ -52,19 +52,19 @@ export class SnippetCompute implements Snippet {
   getTayloredBlock(): XMLDocument {
     const timestamp = Date.now().toString();
     const encodedTimestamp = btoa(timestamp);
-    const xmlString = `<taylored number="${this.id}" compute="${encodedTimestamp}">${this.snippetCode}</taylored>`;
+    const xmlString = `<taylored number="${this.id}" compute="${encodedTimestamp}">${this.value}</taylored>`;
     return new DOMParser().parseFromString(xmlString, "text/xml");
   }
 
   onSnippetChange(): void {
     this.isPlayButtonDisabled = true;
 
-    if (!this.snippetCode) {
+    if (!this.value) {
       return;
     }
 
     // Normalize escaped newlines that might come from test inputs or other sources
-    const processedCode = this.snippetCode.replace(/\\n/g, '\n');
+    const processedCode = this.value.replace(/\\n/g, '\n');
     const lines = processedCode.split('\n');
 
     // Shebang must be on the first line
@@ -88,7 +88,7 @@ export class SnippetCompute implements Snippet {
     }
   }
   onTextChange(): void {
-    if (this.snippetCode.trim() === '') {
+    if (this.value.trim() === '') {
       this.isPlayButtonDisabled = true;
       this.empty.emit(this.id);
     }

@@ -21,15 +21,15 @@ export class SnippetText implements Snippet {
   @Input() id!: number;
   @Output() empty = new EventEmitter<number>();
 
-  text: string = '';
+  value: string = '';
 
   getTayloredBlock(): XMLDocument {
-    const xmlString = `<taylored number="${this.id}" text="true">${this.text}</taylored>`;
+    const xmlString = `<taylored number="${this.id}" text="true">${this.value}</taylored>`;
     return new DOMParser().parseFromString(xmlString, "text/xml");
   }
 
   onTextChange(): void {
-    if (this.text.trim() === '') {
+    if (this.value.trim() === '') {
       this.empty.emit(this.id);
     }
   }

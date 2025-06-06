@@ -3,7 +3,7 @@
       <mat-label>Code</mat-label>
       <textarea matInput
                 cdkTextareaAutosize
-                [(ngModel)]="snippetCode"
+          [(ngModel)]="value"
                 (input)="onTextChange()"
                 (ngModelChange)="onSnippetChange()"
                 placeholder="#!/usr/bin/env python3 ... #!/bin/sh ..."

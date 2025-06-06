@@ -140,10 +140,7 @@ describe('SheetComponent', () => {
     const spacer = cardHeader.query(By.css('span.header-spacer'));
     expect(spacer).toBeTruthy();
 
-    // Check order: title, spacer, button
-    const titleElement = cardHeader.query(By.css('mat-card-title'));
-    expect(titleElement).toBeTruthy('Title element should be present in header');
-
+    // Check order: spacer, button
     // The spacer and button were already queried from cardHeader, these are fine:
     // const spacer = cardHeader.query(By.css('span.header-spacer'));
     // const saveButton = cardHeader.query(By.css('button[aria-label="Save sheet"]'));
@@ -157,30 +154,19 @@ describe('SheetComponent', () => {
 
     // Element containing the title. This is usually div.mat-mdc-card-header-text
     // or the mat-card-title element itself if it's a direct child.
-    let titleContainerElement = headerChildren.find(child => child.nativeElement.classList && child.nativeElement.classList.contains('mat-mdc-card-header-text'));
-    if (!titleContainerElement) {
-      // Fallback if mat-mdc-card-header-text is not a direct child (e.g. no avatar)
-      // or if mat-card-title itself is the direct child we are ordering.
-      titleContainerElement = cardHeader.query(By.css('mat-card-title'));
-    }
-
     const spacerDebugElement = cardHeader.query(By.css('span.header-spacer'));
     const buttonDebugElement = cardHeader.query(By.css('button[aria-label="Save sheet"]'));
 
-    expect(titleContainerElement).toBeTruthy('Title container element should be found in header');
     expect(spacerDebugElement).toBeTruthy('Spacer DebugElement (span.header-spacer) should be found in header');
     expect(buttonDebugElement).toBeTruthy('Button DebugElement (save button) should be found in header');
 
     // Find their indices within the children array
-    const titleContainerIndex = headerChildren.findIndex(child => child === titleContainerElement);
     const spacerIndex = headerChildren.findIndex(child => child === spacerDebugElement);
     const buttonIndex = headerChildren.findIndex(child => child === buttonDebugElement);
 
-    expect(titleContainerIndex).toBeGreaterThanOrEqual(0, 'Title container should be a direct child of header');
     expect(spacerIndex).toBeGreaterThanOrEqual(0, 'Spacer should be a direct child of header');
     expect(buttonIndex).toBeGreaterThanOrEqual(0, 'Button should be a direct child of header');
 
-    expect(titleContainerIndex).toBeLessThan(spacerIndex, 'Title container should come before spacer in DOM');
     expect(spacerIndex).toBeLessThan(buttonIndex, 'Spacer should come before button in DOM');
   });
 

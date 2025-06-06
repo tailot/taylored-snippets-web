@@ -44,6 +44,7 @@ export class SnippetCompute implements Snippet {
   type: 'compute' = 'compute';
   snippetCode: string = '';
   isPlayButtonDisabled: boolean = true;
+  output?: string;
 
   @Input() id!: number;
   @Output() empty = new EventEmitter<number>();

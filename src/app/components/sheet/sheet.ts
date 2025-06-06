@@ -11,6 +11,7 @@ export interface Snippet {
   id: number;
   type: 'text' | 'compute';
   getTayloredBlock(): XMLDocument;
+  output?: string;
 }
 
 @Component({

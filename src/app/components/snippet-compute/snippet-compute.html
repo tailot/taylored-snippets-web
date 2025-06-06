@@ -11,5 +11,15 @@
                 cdkAutosizeMaxRows="20">
       </textarea>
     </mat-form-field>
+  <mat-form-field class="full-width-textarea" *ngIf="output">
+    <mat-label>Output</mat-label>
+    <textarea matInput
+              cdkTextareaAutosize
+              [value]="output"
+              readonly
+              cdkAutosizeMinRows="1"
+              cdkAutosizeMaxRows="20">
+    </textarea>
+  </mat-form-field>
     <button matButton="elevated" [disabled]="isPlayButtonDisabled">Play</button>
 </div>

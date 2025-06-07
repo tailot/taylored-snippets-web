@@ -1,0 +1,52 @@
+x-frontend-common: &frontend-common
+  build:
+    context: .
+    dockerfile: ./Dockerfile
+  ports:
+    - "80:80"
+
+services:
+  # --- SINGLETENANT PROFILE SERVICES ---
+  frontend-singletenant:
+    <<: *frontend-common
+    profiles: ["singletenant"]
+    depends_on:
+      - runner-standalone
+
+  # --- MULTITENANT PROFILE SERVICES ---
+  frontend-multitenant:
+    <<: *frontend-common
+    profiles: ["multitenant"]
+    depends_on:
+      - orchestrator
+
+  orchestrator:
+    build:
+      context: ./src/orchestrator
+      dockerfile: ./Dockerfile
+    ports:
+      - "3001:3001"
+    # Mount the Docker socket to allow the orchestrator to manage other containers.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - NODE_ENV=development
+    command: node orchestrator.js
+    profiles: ["multitenant"]
+    # The orchestrator's dependency is on the 'runner-image' IMAGE being available, not on a running container.
+
+  # --- RUNNER SERVICE ---
+  runner-standalone:
+    build:
+      context: ./src/runner
+      dockerfile: ./Dockerfile
+    ports:
+      - "3000:3000"
+    # This image name is crucial. The orchestrator will use it to start new runners.
+    image: runner-image
+    environment:
+      - PORT=3000
+    command: node runner.js
+    # For the 'multitenant' profile, only its image will exist, ready to be used by the orchestrator.
+    profiles: ["singletenant"]
+

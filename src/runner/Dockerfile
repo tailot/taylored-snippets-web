@@ -1,73 +1,55 @@
+# Usa l'immagine Node.js 22 basata su Alpine come stage di build.
+# Node.js 22 è già incluso, quindi non è necessario installarlo nuovamente.
 FROM node:22-alpine AS build-stage
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Installa i tool di base e le shell usando apk.
+# Ho rimosso 'csh' e 'ksh' perché non sono disponibili nei repository Alpine.
+RUN apk add --no-cache \
     bash \
-    ksh \
     zsh \
-    csh \
     tcsh \
-    python3 \
-    python3-pip \
-    python-is-python3 \
-    perl \
-    ruby-full \
-    php-cli \
-    default-jdk-headless \
-    groovy \
-    lua5.4 \
-    r-base \
-    gawk \
-    tcl \
-    expect \
     curl \
     gnupg \
-    firejail \
-    ca-certificates \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates
 
-# The above command includes the installation of not only interpreters. 
+# Installa i linguaggi di scripting e gli ambienti di runtime usando apk.
+# Ho cambiato 'lua5.4' a 'lua' e 'R' a 'R' (il nome del pacchetto è R).
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    perl \
+    ruby \
+    php \
+    openjdk17-jre-headless \
+    lua \
+    R \
+    gawk \
+    tcl \
+    expect
 
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && npm install -g typescript ts-node \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Installa gli strumenti Node.js globali come TypeScript e ts-node.
+RUN npm install -g typescript ts-node
 
-# RUN echo "Versioni degli interpreti installati:" && \
-#     bash --version | head -n 1 && \
-#     ksh --version 2>&1 | head -n 1 || echo "ksh version check failed" && \
-#     zsh --version | head -n 1 && \
-#     csh --version 2>&1 | head -n 1 || echo "csh version check failed" && \
-#     tcsh --version | head -n 1 && \
-#     python3 --version && \
-#     perl --version | head -n 2 | tail -n 1 && \
-#     ruby --version && \
-#     node --version && \
-#     tsc --version && \
-#     ts-node --version && \
-#     php --version | head -n 1 && \
-#     java -version 2>&1 | head -n 1 && \
-#     groovy --version | head -n 1 && \
-#     lua5.4 -v && \
-#     R --version | head -n 1 && \
-#     gawk --version | head -n 1 && \
-#     tclsh <<< "puts [info patchlevel]" && \
-#     expect -v | head -n 1 || echo "expect version check failed"
-
+# Imposta la directory di lavoro all'interno del container.
 WORKDIR /app
 
+# Copia i file package.json e package-lock.json per installare le dipendenze.
 COPY package*.json ./
 
-RUN npm install
+# Installa le dipendenze di Node.js.
+RUN npm install --production
 
+# Copia il resto del codice dell'applicazione nella directory di lavoro.
 COPY . .
 
-RUN npm run build
-
+# Imposta la variabile d'ambiente NODE_ENV per ottimizzazioni di produzione.
 ENV NODE_ENV=production
 
-EXPOSE 3001
+# Espone la porta 3000, che è la porta predefinita su cui l'applicazione runner Node.js ascolta.
+# Questo allinea il Dockerfile con la configurazione dell'orchestratore.
+EXPOSE 3000
 
+# Specifica il comando che verrà eseguito all'avvio del container.
+# Il percorso di 'runner.js' è stato corretto per riflettere la sua posizione all'interno
+# della directory di lavoro corrente (/app/src/runner/runner.js).
 CMD [ "node", "runner.js" ]

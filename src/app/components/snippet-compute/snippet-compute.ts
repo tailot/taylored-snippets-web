@@ -1,4 +1,4 @@
-import { Component, Output, Input, EventEmitter } from '@angular/core';
+import { Component, Output, Input, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,6 +7,8 @@ import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatButtonModule } from '@angular/material/button';
 import { Snippet } from '../sheet/sheet';
 import { SnippetText } from '../snippet-text/snippet-text';
+import { RunnerService } from 'src/app/services/runner.service';
+import { Subscription } from 'rxjs';
 
 export const VALID_INTERPRETERS = [
   'awk',
@@ -41,14 +43,53 @@ export const VALID_INTERPRETERS = [
   templateUrl: './snippet-compute.html',
   styleUrl: './snippet-compute.sass'
 })
-export class SnippetCompute implements Snippet {
+export class SnippetCompute implements Snippet, OnInit, OnDestroy {
   type: 'compute' = 'compute';
   isPlayButtonDisabled: boolean = true;
+
+  private outputSubscription!: Subscription;
+  private errorSubscription!: Subscription;
+
+  constructor(private runnerService: RunnerService) {}
   
-  @Input() output?: string;
+  @Input() output: string = ''; // Initialize output
   @Input() value: string = '';
   @Input() id!: number;
   @Output() updateSnippet = new EventEmitter<SnippetText | SnippetCompute>();
+
+  ngOnInit(): void {
+    // Proactively attempt to provision a runner.
+    // We don't await this because ngOnInit should not be async.
+    // Errors are logged; tayloredRun will handle provisioning if this fails.
+    this.runnerService.provisionRunner().catch(err => {
+      console.error('Initial runner provisioning failed:', err);
+    });
+
+    this.outputSubscription = this.runnerService.listenForRunnerOutput().subscribe(data => {
+      if (data && typeof data.output === 'string') {
+        this.output = data.output;
+      } else {
+        this.output = JSON.stringify(data);
+      }
+    });
+
+    this.errorSubscription = this.runnerService.listenForRunnerError().subscribe(error => {
+      if (error && typeof error.error === 'string') {
+        this.output = "Error: " + error.error;
+      } else {
+        this.output = "Error: " + JSON.stringify(error);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.outputSubscription) {
+      this.outputSubscription.unsubscribe();
+    }
+    if (this.errorSubscription) {
+      this.errorSubscription.unsubscribe();
+    }
+  }
 
   getTayloredBlock(): XMLDocument {
     const timestamp = Date.now().toString();
@@ -88,5 +129,26 @@ export class SnippetCompute implements Snippet {
   }
   onTextChange(): void {
     this.updateSnippet.emit(this);
+  }
+
+  async tayloredRun(): Promise<void> {
+    this.output = ''; // Clear previous output/errors
+    await this.runnerService.provisionRunner();
+
+    if (!this.runnerService.runnerScript) {
+      this.output = "Error: Could not provision runner.";
+      // Optionally, re-enable the play button or provide other feedback
+      return;
+    }
+
+    const xmlData = this.getTayloredBlock().outerHTML;
+    this.runnerService.sendSnippetToRunner(xmlData);
+
+    // Check if the message was likely sent.
+    // sendSnippetToRunner logs if the socket isn't connected,
+    // but we also want to update the UI.
+    if (!this.runnerService.socket || this.runnerService.socket.readyState !== WebSocket.OPEN) {
+      this.output = "Error: Runner not connected. Please try again.";
+    }
   }
 }

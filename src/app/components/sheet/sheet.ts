@@ -1,4 +1,4 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +6,7 @@ import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-
 import { CommonModule } from '@angular/common'; // For *ngFor, *ngIf, etc.
 import { SnippetText } from '../snippet-text/snippet-text';
 import { SnippetCompute } from '../snippet-compute/snippet-compute';
+import { RunnerService } from '../../services/runner.service';
 
 export interface Snippet {
   id: number;
@@ -25,6 +26,7 @@ export interface Snippet {
 export class Sheet {
   snippets: Snippet[] = [];
   private nextId = 0;
+  private runnerService = inject(RunnerService);
 
   addSnippet(type: 'text' | 'compute'): void {
     let newSnippet: Snippet;
@@ -33,7 +35,7 @@ export class Sheet {
     if (type === 'text') {
       newSnippet = new SnippetText();
     } else { // type === 'compute'
-      newSnippet = new SnippetCompute();
+      newSnippet = new SnippetCompute(this.runnerService);
     }
 
     newSnippet.id = currentId;
@@ -132,7 +134,7 @@ export class Sheet {
           if (item.type === 'text') {
             newSnippet = new SnippetText();
           } else { // item.type === 'compute'
-            newSnippet = new SnippetCompute();
+            newSnippet = new SnippetCompute(this.runnerService);
           }
 
           newSnippet.id = item.id;

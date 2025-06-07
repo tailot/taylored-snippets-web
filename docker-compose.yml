@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "80:80"
+    profiles: ["multitenant", "singletenant"]
+    depends_on:
+      - orchestrator
+      - runner-standalone
+
+  orchestrator:
+    build:
+      context: ./src/orchestrator
+      dockerfile: ./Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - NODE_ENV=development
+    command: node orchestrator.js
+    profiles: ["multitenant"]
+
+  runner-standalone:
+    build:
+      context: ./src/runner
+      dockerfile: ./Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    command: node runner.js
+    profiles: ["singletenant"]
+
+  runner:
+    image: runner-image

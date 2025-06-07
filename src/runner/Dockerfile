@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     tcsh \
     curl \
     gnupg \
-    ca-certificates
+    ca-certificates \
+    git
 
 # Installa i linguaggi di scripting e gli ambienti di runtime usando apk.
 # Ho cambiato 'lua5.4' a 'lua' e 'R' a 'R' (il nome del pacchetto è R).

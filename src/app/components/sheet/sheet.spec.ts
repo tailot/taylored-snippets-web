@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'; // Removed fa
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
 import { provideZonelessChangeDetection, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 
 import { Sheet } from './sheet';
 
@@ -13,10 +14,12 @@ describe('SheetComponent', () => {
     await TestBed.configureTestingModule({
       imports: [
         Sheet,
+        HttpClientTestingModule, // Import HttpClientTestingModule
       ],
       providers: [
         provideAnimations(),
-        provideZonelessChangeDetection()
+        provideZonelessChangeDetection(),
+        // No need to provide RunnerService here if it's 'providedIn: root'
       ]
     })
     .compileComponents();

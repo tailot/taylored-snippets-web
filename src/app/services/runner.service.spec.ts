@@ -194,7 +194,7 @@ describe('RunnerService', () => {
       expect(endpoint).toBeNull();
       expect((service as any).currentSessionId).toBeNull();
       expect((service as any).runnerEndpointSubject.getValue()).toBeNull();
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to provision runner:', jasmine.any(Error));
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Runner provisioning failed:', jasmine.any(Error));
       expect(initializeSocketSpy).not.toHaveBeenCalled();
     });
   });

@@ -8,7 +8,7 @@ import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatButtonModule } from '@angular/material/button';
 import { Snippet } from '../sheet/sheet';
 import { SnippetText } from '../snippet-text/snippet-text';
-import { RunnerService } from '../../services/runner.service';
+import { RunnerService, SnippetOutput } from '../../services/runner.service';
 
 export const VALID_INTERPRETERS = [
   'awk',
@@ -45,8 +45,9 @@ export const VALID_INTERPRETERS = [
 })
 export class SnippetCompute implements Snippet, OnInit, OnDestroy {
   type: 'compute' = 'compute';
-  isPlayButtonDisabled: boolean = true;
-  private outputSubscription: Subscription | undefined;
+  isPlayButtonDisabled: boolean = true; // Will be updated based on isRunnerReady and snippet content validity
+  isRunnerReady = false;
+  private subscriptions = new Subscription();
 
   constructor(private runnerService: RunnerService) {}
   
@@ -95,22 +96,38 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
     this.updateSnippet.emit(this);
   }
 
-  onPlayButtonClick(): void {
+  async onPlayButtonClick(): Promise<void> {
+    this.output = 'Executing...'; // Provide immediate feedback
     const xmlDoc = this.getTayloredBlock();
     const serializer = new XMLSerializer();
-    const xmlString = serializer.serializeToString(xmlDoc);
-    this.runnerService.sendSnippetToRunner(xmlString);
+    // Using xmlDoc.documentElement to serialize just the <taylored> element and its content
+    const xmlString = serializer.serializeToString(xmlDoc.documentElement);
+    await this.runnerService.sendSnippetToRunner(xmlString);
   }
 
   ngOnInit(): void {
-    this.outputSubscription = this.runnerService.snippetOutput$.subscribe(result => {
-      if (result.id === this.id) {
-        this.output = result.output;
-      }
-    });
+    this.subscriptions.add(
+      this.runnerService.isRunnerReady$.subscribe(isReady => {
+        this.isRunnerReady = isReady;
+        // Future: this.updatePlayButtonState(); (or similar if combined with snippet validity)
+      })
+    );
+
+    this.subscriptions.add(
+      this.runnerService.snippetOutput$.subscribe((result: SnippetOutput) => {
+        if (result.id === this.id) {
+          if (result.error) {
+            this.output = `Error: ${result.error}`;
+          } else if (result.output) {
+            this.output = result.output;
+          }
+          // If neither error nor output is present for this ID, this.output remains unchanged.
+        }
+      })
+    );
   }
 
   ngOnDestroy(): void {
-    this.outputSubscription?.unsubscribe();
+    this.subscriptions.unsubscribe();
   }
 }

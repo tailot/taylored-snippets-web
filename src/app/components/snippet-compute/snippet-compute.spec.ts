@@ -5,6 +5,7 @@ import { SnippetCompute } from './snippet-compute';
 import { FormsModule } from '@angular/forms'; // Required for ngModel
 import { MatInputModule } from '@angular/material/input'; // Required for matInput
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; // Required for some Material components
+import { HttpClientTestingModule } from '@angular/common/http/testing'; // Import HttpClientTestingModule
 
 describe('SnippetComputeComponent', () => {
   let component: SnippetCompute;
@@ -16,7 +17,8 @@ describe('SnippetComputeComponent', () => {
         SnippetCompute, // It's standalone
         FormsModule,      // For ngModel
         MatInputModule,   // For matInput used in textarea
-        NoopAnimationsModule // Disable animations for tests
+        NoopAnimationsModule, // Disable animations for tests
+        HttpClientTestingModule // Add HttpClientTestingModule
       ],
       providers: [provideZonelessChangeDetection()]
     })

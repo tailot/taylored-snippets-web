@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { SnippetCompute } from './snippet-compute';
+import { RunnerService } from 'src/app/services/runner.service';
+import { of, EMPTY, Subject } from 'rxjs';
 
 import { FormsModule } from '@angular/forms'; // Required for ngModel
 import { MatInputModule } from '@angular/material/input'; // Required for matInput
@@ -9,8 +11,16 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations'; // 
 describe('SnippetComputeComponent', () => {
   let component: SnippetCompute;
   let fixture: ComponentFixture<SnippetCompute>;
+  let mockRunnerService: jasmine.SpyObj<RunnerService>;
 
   beforeEach(async () => {
+    mockRunnerService = jasmine.createSpyObj('RunnerService', [
+      'provisionRunner',
+      'sendSnippetToRunner',
+      'listenForRunnerOutput',
+      'listenForRunnerError'
+    ]);
+
     await TestBed.configureTestingModule({
       imports: [
         SnippetCompute, // It's standalone
@@ -18,15 +28,25 @@ describe('SnippetComputeComponent', () => {
         MatInputModule,   // For matInput used in textarea
         NoopAnimationsModule // Disable animations for tests
       ],
-      providers: [provideZonelessChangeDetection()]
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: RunnerService, useValue: mockRunnerService }
+      ]
     })
       .compileComponents();
 
     fixture = TestBed.createComponent(SnippetCompute);
     component = fixture.componentInstance;
-    // Initialize with a default id for tests that might need it
-    component.id = 1;
-    fixture.detectChanges(); // Initial binding
+    component.id = 1; // Initialize with a default id
+
+    // Default mock implementations BEFORE ngOnInit is triggered by detectChanges
+    // Note: component.output is initialized to '' in the component itself.
+    mockRunnerService.provisionRunner.and.returnValue(Promise.resolve('mockEndpoint'));
+    mockRunnerService.listenForRunnerOutput.and.returnValue(EMPTY);
+    mockRunnerService.listenForRunnerError.and.returnValue(EMPTY);
+    mockRunnerService.sendSnippetToRunner.and.stub();
+
+    fixture.detectChanges(); // Initial binding and ngOnInit call
   });
 
   it('should create', () => {
@@ -304,6 +324,216 @@ describe('SnippetComputeComponent', () => {
       const outputTextArea = fixture.debugElement.nativeElement.querySelector('textarea[matInput][readonly]');
       expect(outputTextArea).toBeTruthy();
       expect(outputTextArea.hasAttribute('readonly')).toBe(true);
+    });
+  });
+
+  // New test suites
+  describe('ngOnInit interactions', () => {
+    it('should call provisionRunner on init', () => {
+      expect(mockRunnerService.provisionRunner).toHaveBeenCalled();
+    });
+
+    it('should subscribe to listenForRunnerOutput on init', () => {
+      expect(mockRunnerService.listenForRunnerOutput).toHaveBeenCalled();
+    });
+
+    it('should subscribe to listenForRunnerError on init', () => {
+      expect(mockRunnerService.listenForRunnerError).toHaveBeenCalled();
+    });
+
+    it('should initialize output to an empty string (already handled by component init, verify here)', () => {
+      // component.output is initialized to '' in its declaration.
+      // ngOnInit also subscribes, but default EMPTY observable won't emit.
+      expect(component.output).toBe('');
+    });
+  });
+
+  describe('tayloredRun method', () => {
+    beforeEach(() => {
+      // Reset spies and component state before each test in this block
+      mockRunnerService.provisionRunner.calls.reset();
+      mockRunnerService.sendSnippetToRunner.calls.reset();
+      component.output = ''; // Clear output
+      // Ensure a valid snippet that would enable the play button
+      component.value = '#!/bin/bash\necho "test"';
+      component.onSnippetChange(); // This should set isPlayButtonDisabled to false
+      fixture.detectChanges();
+    });
+
+    it('should clear previous output when called', async () => {
+      component.output = 'previous message';
+      await component.tayloredRun();
+      // Expectation is that the first action in tayloredRun is to clear output.
+      // If provisionRunner fails and sets an error, this test might need adjustment
+      // or to spy on that first line. For now, assuming it gets past the clear.
+      // The actual check for clearing is implicitly part of other tests ensuring specific outputs.
+      // Explicit test for clearing:
+      mockRunnerService.provisionRunner.and.returnValue(Promise.resolve(null)); // cause it to fail after clearing
+      await component.tayloredRun();
+      expect(component.output).not.toBe('previous message'); // It should be the error message or empty if error logic changes
+    });
+
+    it('should call provisionRunner', async () => {
+      await component.tayloredRun();
+      expect(mockRunnerService.provisionRunner).toHaveBeenCalled();
+    });
+
+    it('should call getTayloredBlock and sendSnippetToRunner on successful provisioning', async () => {
+      mockRunnerService.provisionRunner.and.returnValue(Promise.resolve('mockEndpoint'));
+      mockRunnerService.runnerScript = 'mockEndpoint'; // Simulate successful provisioning
+      spyOn(component, 'getTayloredBlock').and.callThrough();
+
+      await component.tayloredRun();
+
+      expect(component.getTayloredBlock).toHaveBeenCalled();
+      expect(mockRunnerService.sendSnippetToRunner).toHaveBeenCalled();
+      const expectedXml = component.getTayloredBlock().outerHTML; // Call it again to get what it would have been
+      expect(mockRunnerService.sendSnippetToRunner).toHaveBeenCalledWith(expectedXml);
+    });
+
+    it('should set output to error if provisionRunner fails (returns null)', async () => {
+      mockRunnerService.provisionRunner.and.returnValue(Promise.resolve(null));
+      mockRunnerService.runnerScript = undefined; // Ensure runnerScript is not set
+
+      await component.tayloredRun();
+
+      expect(component.output).toBe('Error: Could not provision runner.');
+      expect(mockRunnerService.sendSnippetToRunner).not.toHaveBeenCalled();
+    });
+
+    it('should set output to error if provisionRunner fails (rejects)', async () => {
+      mockRunnerService.provisionRunner.and.returnValue(Promise.reject(new Error('Provisioning error')));
+      mockRunnerService.runnerScript = undefined; // Ensure runnerScript is not set
+
+      await component.tayloredRun();
+
+      // The current implementation of provisionRunner().catch in ngOnInit logs,
+      // but tayloredRun itself awaits provisionRunner. If that promise rejects AND
+      // runnerScript is not set, it should show "Could not provision runner."
+      // If runnerScript *was* set from a previous successful call, this might behave differently.
+      // For this test, ensure runnerScript is undefined to simulate fresh failure.
+      expect(component.output).toBe('Error: Could not provision runner.');
+      expect(mockRunnerService.sendSnippetToRunner).not.toHaveBeenCalled();
+    });
+
+    it('should set output to error if runner is not connected when sending', async () => {
+      mockRunnerService.provisionRunner.and.returnValue(Promise.resolve('mockEndpoint'));
+      mockRunnerService.runnerScript = 'mockEndpoint';
+      // Simulate WebSocket not being open
+      mockRunnerService.socket = { readyState: WebSocket.CLOSED } as WebSocket;
+
+      await component.tayloredRun();
+
+      expect(mockRunnerService.sendSnippetToRunner).toHaveBeenCalled(); // It will still attempt to send
+      expect(component.output).toBe('Error: Runner not connected. Please try again.');
+    });
+  });
+
+  describe('RunnerService listeners', () => {
+    let outputSubject: Subject<{ output: string } | any>;
+    let errorSubject: Subject<{ error: string } | any>;
+
+    beforeEach(() => {
+      outputSubject = new Subject<{ output: string } | any>(); // Note: Subject was imported at top-level
+      errorSubject = new Subject<{ error: string } | any>();   // Note: Subject was imported at top-level
+      mockRunnerService.listenForRunnerOutput.and.returnValue(outputSubject.asObservable());
+      mockRunnerService.listenForRunnerError.and.returnValue(errorSubject.asObservable());
+
+      // Re-run ngOnInit essentially by creating a new component or re-subscribing.
+      // For simplicity, we directly call ngOnInit if it's safe, or re-create.
+      // Here, we'll re-initialize the subscriptions manually for these tests.
+      // Note: This is a bit of a workaround. Ideally, TestBed would handle this,
+      // but direct subject manipulation after initial detectChanges requires care.
+      // A cleaner way might be to re-createComponent for these specific listener tests.
+      // However, let's try direct subscription for now if ngOnInit handles re-subscription well.
+      // SnippetCompute's ngOnInit doesn't protect against multiple subscriptions, so this is fine.
+      component.ngOnInit();
+      fixture.detectChanges();
+    });
+
+    it('should update output when listenForRunnerOutput emits data with output property', () => {
+      const testData = { output: 'Runner test output' };
+      outputSubject.next(testData);
+      fixture.detectChanges();
+      expect(component.output).toBe('Runner test output');
+    });
+
+    it('should update output with stringified data if output property is missing', () => {
+      const testData = { message: 'Some other data' };
+      outputSubject.next(testData);
+      fixture.detectChanges();
+      expect(component.output).toBe(JSON.stringify(testData));
+    });
+
+    it('should update output with stringified data if data is not an object (e.g. string)', () => {
+      const testData = 'Raw string output';
+      outputSubject.next(testData); // listenForRunnerOutput expects an object, but testing robustness
+      fixture.detectChanges();
+      expect(component.output).toBe(JSON.stringify(testData)); // Current implementation will stringify
+    });
+
+    it('should update output with error message when listenForRunnerError emits an error with error property', () => {
+      const testError = { error: 'Runner error occurred' };
+      errorSubject.next(testError);
+      fixture.detectChanges();
+      expect(component.output).toBe('Error: Runner error occurred');
+    });
+
+    it('should update output with stringified error if error property is missing', () => {
+      const testError = { details: 'Some other error info' };
+      errorSubject.next(testError);
+      fixture.detectChanges();
+      expect(component.output).toBe('Error: ' + JSON.stringify(testError));
+    });
+
+    it('should update output with stringified error if error is not an object (e.g. string)', () => {
+      const testError = 'Raw error string';
+      errorSubject.next(testError); // listenForRunnerError expects an object
+      fixture.detectChanges();
+      expect(component.output).toBe('Error: ' + JSON.stringify(testError)); // Current implementation
+    });
+  });
+
+  describe('ngOnDestroy', () => {
+    it('should call unsubscribe on outputSubscription if it exists', () => {
+      // outputSubscription is assigned in ngOnInit.
+      // We need to spy on its unsubscribe method.
+      // Since EMPTY completes immediately, its subscription might be auto-cleaned.
+      // Let's use a Subject that doesn't complete to ensure subscription exists.
+      const outputSub = new Subject<any>();
+      mockRunnerService.listenForRunnerOutput.and.returnValue(outputSub.asObservable());
+      // component.ngOnInit(); // Call ngOnInit again to re-subscribe with the new subject
+      // Need to access the actual subscription object created inside component.
+      // This requires outputSubscription to be non-private or use a spy.
+      // For simplicity, let's assume the subscriptions are stored as component properties
+      // (which they are: this.outputSubscription, this.errorSubscription)
+
+      // Re-initialize component to ensure subscriptions are fresh with non-completing observables
+      // This is getting complicated due to beforeEach setting up EMPTY.
+      // A focused beforeEach for this describe block might be better.
+      // For now, let's spy on the component's subscription's unsubscribe method.
+
+      // Access the subscription made in the main beforeEach (which used EMPTY)
+      // This test might be tricky if EMPTY's subscription is already closed.
+      // A better approach for this specific test:
+      const mockOutputSubscription = jasmine.createSpyObj('Subscription', ['unsubscribe']);
+      const mockErrorSubscription = jasmine.createSpyObj('Subscription', ['unsubscribe']);
+
+      (component as any).outputSubscription = mockOutputSubscription;
+      (component as any).errorSubscription = mockErrorSubscription;
+
+      component.ngOnDestroy();
+
+      expect(mockOutputSubscription.unsubscribe).toHaveBeenCalled();
+      expect(mockErrorSubscription.unsubscribe).toHaveBeenCalled();
+    });
+
+    it('should not throw if subscriptions do not exist (though current code always creates them)', () => {
+       // Set them to undefined to simulate a state where they might not exist
+      (component as any).outputSubscription = undefined;
+      (component as any).errorSubscription = undefined;
+
+      expect(() => component.ngOnDestroy()).not.toThrow();
     });
   });
 });

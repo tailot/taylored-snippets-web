@@ -30,13 +30,22 @@ io.on('connection', (socket) => {
     }
     const blockRegex = /[^\n]*?<taylored\s+number=["'](\d+)["'](?:\s+compute=["']([^"']*)["'])?>([\s\S]*?)[^\n]*?<\/taylored>/g;
     const matches = [...xmlData.matchAll(blockRegex)];
+
+    // Assuming the first match is the relevant one for the ID
+    let numberValue = null;
     if (matches.length > 0) {
-      for (const match of matches) {
-        const numberValue = match[1];
-        const computeValue = match[2];
-        const innerContent = match[3].trim();
-      }
+      const firstMatch = matches[0];
+      numberValue = firstMatch[1];
+      // const computeValue = firstMatch[2]; // computeValue not used in this modification
+      // const innerContent = firstMatch[3].trim(); // innerContent not used in this modification
     }
+
+    // If no numberValue could be extracted, it's an issue with the input or regex
+    if (numberValue === null) {
+      socket.emit('tayloredRunError', { error: 'Could not extract snippet ID (number) from XML data.' });
+      return;
+    }
+
     let tempDir;
     try {
       tempDir = tmp.dirSync({ unsafeCleanup: true });
@@ -50,7 +59,7 @@ io.on('connection', (socket) => {
       const tayloredProcess = spawn('npx', ['taylored', '--automatic', 'xml', 'main'], { cwd: tempDirPath });
 
       tayloredProcess.stdout.on('data', (data) => {
-        socket.emit('tayloredOutput', { output: data.toString() });
+        socket.emit('tayloredOutput', { id: parseInt(numberValue, 10), output: data.toString() });
       });
 
       tayloredProcess.stderr.on('data', (data) => {

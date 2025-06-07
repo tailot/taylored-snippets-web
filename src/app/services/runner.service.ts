@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { io, Socket } from 'socket.io-client'; // Using official socket.io-client
 
@@ -20,6 +20,9 @@ export class RunnerService implements OnDestroy {
 
   private runnerEndpointSubject = new BehaviorSubject<string | null>(null);
   public runnerEndpoint$: Observable<string | null> = this.runnerEndpointSubject.asObservable();
+
+  private snippetOutputSubject = new Subject<{ id: number, output: string }>();
+  public snippetOutput$ = this.snippetOutputSubject.asObservable();
 
   private currentSessionId: string | null = null;
   private runnerSocket: Socket | null = null;
@@ -258,18 +261,20 @@ export class RunnerService implements OnDestroy {
    * @returns {Observable<any>} An observable that emits data received from the 'tayloredOutput' event.
    * Throws an error if the socket is not initialized.
    */
-  listenForRunnerOutput(): Observable<any> {
+  listenForRunnerOutput(): void {
     if (!this.runnerSocket) {
       // Return an empty observable or throw error if socket not initialized
-      return throwError(() => new Error('Runner socket not initialized for listening to output.'));
+      // Consider logging an error or handling this state appropriately
+      console.error('Runner socket not initialized for listening to output.');
+      return;
     }
-    return new Observable(observer => {
-      this.runnerSocket?.on('tayloredOutput', (data) => {
-        observer.next(data);
-      });
-      // Cleanup when unsubscribed
-      return () => this.runnerSocket?.off('tayloredOutput');
+    this.runnerSocket.on('tayloredOutput', (data: { id: number, output: string }) => {
+      this.snippetOutputSubject.next(data);
     });
+    // Note: No direct way to clean up this specific listener with socket.io v2/v3 client
+    // if you need to stop listening to just this, you might need `this.runnerSocket.off('tayloredOutput')`
+    // called explicitly when the service is destroyed or when no longer needed.
+    // However, socket disconnect on ngOnDestroy will clean up all listeners.
   }
 
   /**

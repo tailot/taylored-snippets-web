@@ -1,12 +1,14 @@
-import { Component, Output, Input, EventEmitter } from '@angular/core';
+import { Component, Output, Input, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatButtonModule } from '@angular/material/button';
 import { Snippet } from '../sheet/sheet';
 import { SnippetText } from '../snippet-text/snippet-text';
+import { RunnerService } from '../../services/runner.service';
 
 export const VALID_INTERPRETERS = [
   'awk',
@@ -41,9 +43,12 @@ export const VALID_INTERPRETERS = [
   templateUrl: './snippet-compute.html',
   styleUrl: './snippet-compute.sass'
 })
-export class SnippetCompute implements Snippet {
+export class SnippetCompute implements Snippet, OnInit, OnDestroy {
   type: 'compute' = 'compute';
   isPlayButtonDisabled: boolean = true;
+  private outputSubscription: Subscription | undefined;
+
+  constructor(private runnerService: RunnerService) {}
   
   @Input() output?: string;
   @Input() value: string = '';
@@ -88,5 +93,24 @@ export class SnippetCompute implements Snippet {
   }
   onTextChange(): void {
     this.updateSnippet.emit(this);
+  }
+
+  onPlayButtonClick(): void {
+    const xmlDoc = this.getTayloredBlock();
+    const serializer = new XMLSerializer();
+    const xmlString = serializer.serializeToString(xmlDoc);
+    this.runnerService.sendSnippetToRunner(xmlString);
+  }
+
+  ngOnInit(): void {
+    this.outputSubscription = this.runnerService.snippetOutput$.subscribe(result => {
+      if (result.id === this.id) {
+        this.output = result.output;
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.outputSubscription?.unsubscribe();
   }
 }

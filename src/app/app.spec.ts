@@ -4,6 +4,7 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
+import { HttpClientTestingModule } from '@angular/common/http/testing'; // Added
 import { App } from './app';
 // App è standalone e importa già MatToolbarModule, MatIconModule, SideMenuComponent, etc.
 // Quindi non dovrebbero essere necessari qui a meno di casi specifici di override o testing profondo.
@@ -17,7 +18,8 @@ describe('App', () => {
     await TestBed.configureTestingModule({
       imports: [
         App, // App è standalone e importa ciò che serve
-        NoopAnimationsModule // Necessario per i componenti Material Design
+        NoopAnimationsModule, // Necessario per i componenti Material Design
+        HttpClientTestingModule // Added: RunnerService (dependency of App) needs HttpClient
       ],
       providers: [
         provideZonelessChangeDetection(),

@@ -1,6 +1,7 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, OnInit } from '@angular/core';
 import { Sheet, Snippet } from './components/sheet/sheet'; // Snippet import corretto
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
+import { RunnerService } from './services/runner.service';
 import { MatListModule } from '@angular/material/list';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,14 +24,14 @@ import { MenuItem } from './components/side-menu/menu-item';
   templateUrl: './app.html',
   styleUrl: './app.sass'
 })
-export class App {
+export class App implements OnInit {
   protected title = 'taylored-snippets-web';
   @ViewChild('sidenav') sidenav!: MatSidenav;
   @ViewChild(Sheet) sheetComponent!: Sheet;
 
   public sideMenuItems: MenuItem[] = [];
 
-  constructor() {
+  constructor(private runnerService: RunnerService) {
     // Sample MenuItems
     // this.sideMenuItems = [
     //   {
@@ -50,6 +51,12 @@ export class App {
     //     snippets: []
     //   }
     // ];
+  }
+
+  ngOnInit() {
+    this.runnerService.provisionRunner().catch(error => {
+      console.error('Error provisioning runner:', error);
+    });
   }
 
   public onSnippetsSelected(snippets: Snippet[]) {

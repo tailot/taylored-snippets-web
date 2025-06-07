@@ -4,6 +4,14 @@ import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { io, Socket } from 'socket.io-client'; // Using official socket.io-client
 
+/**
+ * RunnerService is a root-provided Angular service responsible for managing
+ * the lifecycle of and communication with a dedicated `runner.js` instance.
+ * This service handles provisioning (requesting a new runner instance from an
+ * orchestrator), deprovisioning (terminating the runner instance), and sending
+ * messages or snippets to the runner via Socket.IO. It also listens for
+ * output and errors from the runner.
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -63,7 +71,37 @@ export class RunnerService implements OnDestroy {
     }
   }
 
+  /**
+   * Sends a generic message to the connected runner instance via Socket.IO.
+   *
+   * This method can be used by other components or services to send various
+   * types of messages or commands to the runner, provided the runner is
+   * programmed to handle them.
+   *
+   * @param {string} eventName The name of the event to emit. This should
+   *                           correspond to an event listener on the runner.
+   * @param {any} data The payload to send with the event.
+   *
+   * @example
+   * // Assuming `runnerService` is an injected instance of RunnerService
+   * this.runnerService.sendMessage('customEvent', { payload: 'hello runner!' });
+   */
+  public sendMessage(eventName: string, data: any): void {
+    if (this.runnerSocket && this.runnerSocket.connected) {
+      this.runnerSocket.emit(eventName, data);
+    } else {
+      console.error('Runner socket not connected. Cannot send message.');
+    }
+  }
 
+  /**
+   * Provisions a new runner instance through the orchestrator.
+   * If a runner is already provisioned and connected, it returns the existing endpoint.
+   * If a session ID exists but the socket is not connected, it attempts to deprovision
+   * the old session before provisioning a new one.
+   * Upon successful provisioning, it initializes a Socket.IO connection to the new runner.
+   * @returns {Promise<string | null>} A promise that resolves with the runner endpoint URL or null if provisioning fails.
+   */
   async provisionRunner(): Promise<string | null> {
     if (this.currentSessionId && this.runnerSocket && this.runnerSocket.connected) {
         console.log('Runner already provisioned and connected:', this.runnerEndpointSubject.getValue());
@@ -166,6 +204,14 @@ export class RunnerService implements OnDestroy {
     }
   }
 
+  /**
+   * Deprovisions the currently active runner instance.
+   * It sends a request to the orchestrator to terminate the runner associated with the current session ID.
+   * Clears local runner state regardless of whether the orchestrator call succeeds.
+   * @returns {Observable<any>} An observable that completes when the deprovisioning request is sent,
+   * or an observable of an error if the request fails. If no session is active, it returns
+   * an observable that emits an object with a message 'No active session'.
+   */
   deprovisionRunner(): Observable<any> {
     if (!this.currentSessionId) {
       console.log('No active session to deprovision.');
@@ -190,6 +236,11 @@ export class RunnerService implements OnDestroy {
     );
   }
 
+  /**
+   * Sends snippet data (XML) to the connected runner for execution.
+   * The runner should be set up to listen for the 'tayloredRun' event.
+   * @param {string} xmlData The XML string representing the snippet to be executed.
+   */
   sendSnippetToRunner(xmlData: string): void {
     if (this.runnerSocket && this.runnerSocket.connected) {
       this.runnerSocket.emit('tayloredRun', { body: xmlData });
@@ -201,6 +252,12 @@ export class RunnerService implements OnDestroy {
     }
   }
 
+  /**
+   * Listens for 'tayloredOutput' events from the runner.
+   * These events are expected to carry the output or results of snippet execution.
+   * @returns {Observable<any>} An observable that emits data received from the 'tayloredOutput' event.
+   * Throws an error if the socket is not initialized.
+   */
   listenForRunnerOutput(): Observable<any> {
     if (!this.runnerSocket) {
       // Return an empty observable or throw error if socket not initialized
@@ -215,6 +272,12 @@ export class RunnerService implements OnDestroy {
     });
   }
 
+  /**
+   * Listens for 'tayloredRunError' events from the runner.
+   * These events are expected to carry error information from snippet execution.
+   * @returns {Observable<any>} An observable that emits data received from the 'tayloredRunError' event.
+   * Throws an error if the socket is not initialized.
+   */
   listenForRunnerError(): Observable<any> {
     if (!this.runnerSocket) {
       return throwError(() => new Error('Runner socket not initialized for listening to errors.'));
@@ -228,7 +291,11 @@ export class RunnerService implements OnDestroy {
     });
   }
 
-  // This is crucial for cleaning up when the service itself is destroyed (e.g., app closes)
+  /**
+   * Lifecycle hook that cleans up when the service is destroyed.
+   * This is crucial for deprovisioning the runner to free up resources.
+   * It removes the 'beforeunload' event listener and attempts to deprovision the runner.
+   */
   ngOnDestroy(): void {
     console.log('RunnerService ngOnDestroy called. Attempting deprovision.');
     // Remove the event listener to prevent memory leaks

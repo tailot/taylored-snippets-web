@@ -62,7 +62,7 @@ app.post('/api/runner/provision', async (req, res, next) => {
 
   let allocatedPort;
   let containerInstance;
-  const imageName = 'runner-standalone';
+  const imageName = 'runner-image';
 
   try {
     if (networkMode !== 'none') {

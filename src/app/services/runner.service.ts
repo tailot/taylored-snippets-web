@@ -4,6 +4,12 @@ import { BehaviorSubject, Observable, Subject, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { io, Socket } from 'socket.io-client'; // Using official socket.io-client
 
+export interface SnippetOutput {
+  id: number;
+  output?: string;
+  error?: string;
+}
+
 /**
  * RunnerService is a root-provided Angular service responsible for managing
  * the lifecycle of and communication with a dedicated `runner.js` instance.
@@ -21,8 +27,11 @@ export class RunnerService implements OnDestroy {
   private runnerEndpointSubject = new BehaviorSubject<string | null>(null);
   public runnerEndpoint$: Observable<string | null> = this.runnerEndpointSubject.asObservable();
 
-  private snippetOutputSubject = new Subject<{ id: number, output: string }>();
-  public snippetOutput$ = this.snippetOutputSubject.asObservable();
+  private snippetOutputSubject = new Subject<SnippetOutput>();
+  public snippetOutput$: Observable<SnippetOutput> = this.snippetOutputSubject.asObservable();
+
+  private isRunnerReadySubject = new BehaviorSubject<boolean>(false);
+  public isRunnerReady$: Observable<boolean> = this.isRunnerReadySubject.asObservable();
 
   private currentSessionId: string | null = null;
   private runnerSocket: Socket | null = null;
@@ -178,16 +187,20 @@ export class RunnerService implements OnDestroy {
 
     this.runnerSocket.on('connect', () => {
       console.log('Socket.IO connected to runner:', endpoint);
+      this.isRunnerReadySubject.next(true);
+      this.setupListeners(); // This method will be created in the next step
     });
 
     this.runnerSocket.on('disconnect', (reason) => {
       console.log('Socket.IO disconnected from runner:', reason);
+      this.isRunnerReadySubject.next(false);
       // Optionally try to reprovision or notify user
       // this.runnerEndpointSubject.next(null); // Consider if this is desired on disconnect
     });
 
     this.runnerSocket.on('connect_error', (error) => {
       console.error('Socket.IO connection error:', error);
+      this.isRunnerReadySubject.next(false);
       this.runnerEndpointSubject.next(null); // Clear endpoint on connection error
       // Potentially try to deprovision this session as it's unusable
       if(this.currentSessionId) {
@@ -198,7 +211,37 @@ export class RunnerService implements OnDestroy {
     });
   }
 
+  private setupListeners(): void {
+    if (!this.runnerSocket) {
+      console.error('Socket not initialized, cannot setup listeners.');
+      return;
+    }
+
+    // Clear existing listeners before attaching new ones to prevent duplicates
+    // if this method could be called multiple times on the same socket instance.
+    // For current design, it's called once on 'connect'.
+    this.runnerSocket.off('tayloredOutput');
+    this.runnerSocket.off('tayloredError');
+    this.runnerSocket.off('tayloredRunError');
+
+    this.runnerSocket.on('tayloredOutput', (data: SnippetOutput) => {
+      // Ensure data conforms to SnippetOutput, especially if it might only contain id and output
+      this.snippetOutputSubject.next({ id: data.id, output: data.output, error: data.error || undefined });
+    });
+
+    this.runnerSocket.on('tayloredError', (data: SnippetOutput) => {
+       // Ensure data conforms to SnippetOutput, especially if it might only contain id and error
+      this.snippetOutputSubject.next({ id: data.id, error: data.error, output: data.output || undefined });
+    });
+
+    this.runnerSocket.on('tayloredRunError', (data: SnippetOutput) => {
+      // Ensure data conforms to SnippetOutput
+      this.snippetOutputSubject.next({ id: data.id, error: data.error, output: data.output || undefined });
+    });
+  }
+
   private clearRunnerState(): void {
+    this.isRunnerReadySubject.next(false); // Also set runner to not ready
     this.currentSessionId = null;
     this.runnerEndpointSubject.next(null);
     if (this.runnerSocket) {
@@ -216,9 +259,11 @@ export class RunnerService implements OnDestroy {
    * an observable that emits an object with a message 'No active session'.
    */
   deprovisionRunner(): Observable<any> {
+    this.isRunnerReadySubject.next(false); // Explicitly set runner as not ready
+
     if (!this.currentSessionId) {
       console.log('No active session to deprovision.');
-      this.clearRunnerState();
+      this.clearRunnerState(); // This will also call isRunnerReadySubject.next(false)
       return new BehaviorSubject({ message: 'No active session' }); // Return an observable
     }
 
@@ -244,56 +289,27 @@ export class RunnerService implements OnDestroy {
    * The runner should be set up to listen for the 'tayloredRun' event.
    * @param {string} xmlData The XML string representing the snippet to be executed.
    */
-  sendSnippetToRunner(xmlData: string): void {
+  public async sendSnippetToRunner(xmlData: string): Promise<void> {
+    if (!this.isRunnerReadySubject.getValue()) {
+      console.warn('Runner not ready. Attempting to provision a new one...');
+      try {
+        await this.provisionRunner();
+        // After successful provisioning, isRunnerReadySubject should be true via initializeSocket's 'connect' event.
+        // However, if provisionRunner resolves but the socket doesn't connect immediately,
+        // isRunnerReadySubject might still be false here. The check below will handle it.
+      } catch (error) {
+        console.error('Re-provisioning failed. Cannot execute snippet.', error);
+        return;
+      }
+    }
+
     if (this.runnerSocket && this.runnerSocket.connected) {
       this.runnerSocket.emit('tayloredRun', { body: xmlData });
       console.log('Snippet sent to runner via Socket.IO');
     } else {
-      console.error('Runner socket not connected. Cannot send snippet.');
-      // Optionally try to provision again or notify user
-      // this.provisionRunner(); // Be careful with automatic re-provisioning loops
+      // This case handles if provisioning was attempted but socket is still not connected.
+      console.error('Runner socket not connected. Cannot send snippet. Provisioning may have failed or socket connection is delayed.');
     }
-  }
-
-  /**
-   * Listens for 'tayloredOutput' events from the runner.
-   * These events are expected to carry the output or results of snippet execution.
-   * @returns {Observable<any>} An observable that emits data received from the 'tayloredOutput' event.
-   * Throws an error if the socket is not initialized.
-   */
-  listenForRunnerOutput(): void {
-    if (!this.runnerSocket) {
-      // Return an empty observable or throw error if socket not initialized
-      // Consider logging an error or handling this state appropriately
-      console.error('Runner socket not initialized for listening to output.');
-      return;
-    }
-    this.runnerSocket.on('tayloredOutput', (data: { id: number, output: string }) => {
-      this.snippetOutputSubject.next(data);
-    });
-    // Note: No direct way to clean up this specific listener with socket.io v2/v3 client
-    // if you need to stop listening to just this, you might need `this.runnerSocket.off('tayloredOutput')`
-    // called explicitly when the service is destroyed or when no longer needed.
-    // However, socket disconnect on ngOnDestroy will clean up all listeners.
-  }
-
-  /**
-   * Listens for 'tayloredRunError' events from the runner.
-   * These events are expected to carry error information from snippet execution.
-   * @returns {Observable<any>} An observable that emits data received from the 'tayloredRunError' event.
-   * Throws an error if the socket is not initialized.
-   */
-  listenForRunnerError(): Observable<any> {
-    if (!this.runnerSocket) {
-      return throwError(() => new Error('Runner socket not initialized for listening to errors.'));
-    }
-    return new Observable(observer => {
-      this.runnerSocket?.on('tayloredRunError', (data) => {
-        observer.next(data);
-      });
-      // Cleanup when unsubscribed
-      return () => this.runnerSocket?.off('tayloredRunError');
-    });
   }
 
   /**

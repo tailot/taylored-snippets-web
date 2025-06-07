@@ -63,18 +63,20 @@ io.on('connection', (socket) => {
       });
 
       tayloredProcess.stderr.on('data', (data) => {
-        socket.emit('tayloredError', { error: data.toString() });
+        socket.emit('tayloredError', { id: parseInt(numberValue, 10), error: data.toString() });
       });
 
       tayloredProcess.on('error', (error) => {
-        socket.emit('tayloredRunError', { error: `Execution failed: ${error.message}` });
+        // For general execution errors, also include the ID if available
+        socket.emit('tayloredRunError', { id: numberValue ? parseInt(numberValue, 10) : null, error: `Execution failed: ${error.message}` });
       });
 
       tayloredProcess.on('close', (code) => {
         console.log(`Command finished with code ${code}`);
       });
     } catch (err) {
-      socket.emit('tayloredRunError', { error: `Server-side error: ${err.message}` });
+      // For server-side errors before or during process spawning, also include ID if available
+      socket.emit('tayloredRunError', { id: numberValue ? parseInt(numberValue, 10) : null, error: `Server-side error: ${err.message}` });
     } finally {
       // tempDir cleanup is handled by tmp.dirSync with unsafeCleanup: true
     }

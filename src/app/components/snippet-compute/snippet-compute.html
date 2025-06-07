@@ -11,5 +11,5 @@
     <textarea matInput cdkTextareaAutosize [value]="output" readonly cdkAutosizeMinRows="1" cdkAutosizeMaxRows="20">
     </textarea>
   </mat-form-field>
-  <button matButton="elevated" [disabled]="isPlayButtonDisabled">Play</button>
+  <button matButton="elevated" [disabled]="isPlayButtonDisabled" (click)="onPlayButtonClick()">Play</button>
 </div>

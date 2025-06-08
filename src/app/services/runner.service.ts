@@ -25,6 +25,9 @@ export interface SnippetOutput {
 export class RunnerService implements OnDestroy {
   private orchestratorUrl = environment.orchestrator; // Supponendo che l'orchestratore sia in esecuzione qui
 
+  private HEARTBEAT_INTERVAL_MS = 60 * 500;
+  private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+
   private runnerEndpointSubject = new BehaviorSubject<string | null>(null);
   public runnerEndpoint$: Observable<string | null> = this.runnerEndpointSubject.asObservable();
 
@@ -157,6 +160,7 @@ export class RunnerService implements OnDestroy {
         this.currentSessionId = response.sessionId;
         this.runnerEndpointSubject.next(response.endpoint);
         this.initializeSocket(response.endpoint);
+        this.startHeartbeat(); // Avvia l'heartbeat dopo il provisioning
         console.log('Runner provisioned successfully:', response.endpoint, 'Session ID:', response.sessionId);
         return response.endpoint;
       } else {
@@ -167,6 +171,51 @@ export class RunnerService implements OnDestroy {
       console.error('Runner provisioning failed:', error);
       this.clearRunnerState();
       return null; // Or throw error
+    }
+  }
+
+  private startHeartbeat(): void {
+    this.clearHeartbeat(); // Cancella qualsiasi heartbeat precedente
+
+    if (this.currentSessionId) {
+      this.heartbeatIntervalId = setInterval(() => {
+        this.sendHeartbeat();
+      }, this.HEARTBEAT_INTERVAL_MS);
+      console.log(`Heartbeat started for session: ${this.currentSessionId}`);
+    }
+  }
+
+  private sendHeartbeat(): void {
+    if (!this.currentSessionId) {
+      console.warn('Cannot send heartbeat, no current session ID. Stopping heartbeat.');
+      this.clearHeartbeat();
+      return;
+    }
+
+    const sessionId = this.currentSessionId; // Copia per evitare race conditions
+    this.http.post(`${this.orchestratorUrl}/api/runner/heartbeat`, { sessionId })
+      .pipe(
+        catchError(err => {
+          console.error(`Heartbeat failed for session ${sessionId}:`, err);
+          // Se la sessione non è più valida sull'orchestratore (es. 404), ferma l'heartbeat.
+          if (err.status === 404 || err.status === 400) {
+            console.warn(`Stopping heartbeat for session ${sessionId} due to server error: ${err.status}. The session may no longer be valid.`);
+            this.clearHeartbeat();
+          }
+          return throwError(() => err); // Ritorna un observable di errore per la catena rxjs
+        })
+      )
+      .subscribe({
+        next: () => console.log(`Heartbeat sent successfully for session: ${sessionId}`),
+        // L'errore è già gestito e loggato in catchError
+      });
+  }
+
+  private clearHeartbeat(): void {
+    if (this.heartbeatIntervalId) {
+      clearInterval(this.heartbeatIntervalId);
+      this.heartbeatIntervalId = null;
+      console.log('Heartbeat stopped.');
     }
   }
 
@@ -250,6 +299,7 @@ export class RunnerService implements OnDestroy {
   }
 
   private clearRunnerState(): void {
+    this.clearHeartbeat(); // Ferma l'heartbeat quando lo stato del runner viene resettato
     this.isRunnerReadySubject.next(false); // Also set runner as not ready
     this.currentSessionId = null;
     this.runnerEndpointSubject.next(null);

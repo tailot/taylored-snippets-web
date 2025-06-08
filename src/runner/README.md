@@ -12,10 +12,15 @@ This project includes a Node.js service (`src/runner/runner.js`) that listens fo
 
 ## Prerequisites
 
-*   Node.js (v14.x or later recommended)
-*   npm (comes with Node.js)
+*   **Node.js**: Version 20 is recommended (aligns with the main project).
+*   **npm**: Is installed along with Node.js.
+*   **Taylored CLI**: The `taylored` command-line tool (typically `npx taylored`) must be available in the execution environment, as this service invokes it. The `runner-image` Docker image handles this dependency.
 
 ## Setup and Running
+
+**Note:** This Runner service is designed to be packaged within a Docker image (named `runner-image`) and managed by the Orchestrator service (see `../orchestrator/README.md`). It is typically not run standalone in a production setup. The `runner-image` is built by the `runner-builder` service defined in the main `docker-compose.yml`.
+
+To run the service standalone (e.g., for isolated development or testing):
 
 1.  **Navigate to the service directory:**
     ```bash
@@ -26,15 +31,20 @@ This project includes a Node.js service (`src/runner/runner.js`) that listens fo
     ```bash
     npm install
     ```
+    (This will also install `taylored` as a local npm dependency if not globally available and if listed in `package.json`.)
 
 3.  **Run the server:**
     ```bash
     node runner.js
     ```
-    The server will start, by default, on port 3000. You can set the `PORT` environment variable to use a different port:
-    ```bash
-    PORT=4000 node runner.js
-    ```
+    The server will start on port `3000` by default. This can be configured using the `PORT` environment variable (see below).
+
+## Environment Variables
+
+*   **`PORT`**:
+    *   Description: Specifies the port on which the Runner service will listen.
+    *   Default: `3000`.
+    *   Example: `PORT=3001 node runner.js`
 
 ## Socket.IO API
 
@@ -57,8 +67,8 @@ The server listens for and emits the following Socket.IO events:
     *   **Description**: Emitted if the `taylored` command writes to `stderr`. This might include warnings or non-critical errors from `taylored`. The `error` field contains the `stderr` string.
 
 *   **`tayloredRunError`**:
-    *   **Payload**: `Object` - `{ error: '...' }`
-    *   **Description**: Emitted if there's a general error during the processing of the `tayloredRun` event (e.g., invalid input, file system error, git error, `taylored` command execution failure). The `error` field contains a descriptive error message.
+    *   **Payload**: `Object` - `{ id: number | null, error: '...' }`
+    *   **Description**: Emitted if there's a general error during the processing of the `tayloredRun` event (e.g., invalid input, file system error, git error, `taylored` command execution failure). The `error` field contains a descriptive error message. The `id` field will contain the extracted snippet ID if available.
 
 ## License
 

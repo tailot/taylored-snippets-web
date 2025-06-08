@@ -36,7 +36,7 @@ services:
   orchestrator-multitenant:
     <<: *orchestrator-common
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - REUSE_RUNNER_MODE=false
     profiles: ["multitenant"]
     depends_on:
@@ -46,7 +46,7 @@ services:
   orchestrator-singletenant:
     <<: *orchestrator-common
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - REUSE_RUNNER_MODE=true
     profiles: ["singletenant"]
     depends_on:

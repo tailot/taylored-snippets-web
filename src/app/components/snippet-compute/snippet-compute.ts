@@ -120,9 +120,10 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
           if (result.error) {
             this.output = `Error: ${result.error}`;
           } else if (result.output) {
-            this.output += result.output;
+            // Initialize output as empty string if undefined, then concatenate
+            this.output = (this.output || '') + result.output;
             this.cdr.detectChanges();
-            if (this.output.endsWith('Finished processing. Successfully created 1 taylored file(s).')) {
+            if (this.output?.includes('Finished processing. Successfully created 1 taylored file(s).')) {
               this.finishedProcessing.emit(this);
             }
           }

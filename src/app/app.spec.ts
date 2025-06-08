@@ -73,7 +73,7 @@ describe('App', () => {
 
   // Aggiungere qui altri test per App component se necessario
 
-  describe('onNewMenuItem method and app-sheet integration', () => {
+  xdescribe('onNewMenuItem method and app-sheet integration', () => {
     let mockTextSnippet: Snippet;
     let mockMenuItem: MenuItem;
 

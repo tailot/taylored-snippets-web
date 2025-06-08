@@ -36,13 +36,7 @@ Before you start, make sure you have the following installed:
 
 ## Building the Runner Image
 
-Before launching the application, you need to build the Docker image for the runner service. The orchestration service will use it to create runner instances on demand.
-
-Navigate to the runner directory and run the build command:
-```bash
-cd src/orchestrator
-docker build -t runner-image .
-```
+The `runner-image`, which is used by the orchestrator to create runner instances, is automatically built by Docker Compose when you launch the application using either the `multitenant` or `singletenant` profile. This is handled by the `runner-builder` service defined in the `docker-compose.yml` file.
 
 ## How to Launch the Application
 
@@ -54,13 +48,13 @@ This mode is ideal for production or for tests that require complete session iso
 
 1.  **Start the services with the `multitenant` profile:**
     ```bash
-    docker compose build runner-standalone
     docker-compose --profile multitenant up --build
     ```
 
 2.  This command will start the following services:
-    * `frontend`: The Angular application, accessible at `http://localhost:80`.
-    * `orchestrator`: The Node.js service that listens on port `3001` and manages the runners.
+    * `frontend-multitenant`: The Angular application, accessible at `http://localhost:80`.
+    * `orchestrator-multitenant`: The Node.js service that listens on port `3001` and manages the runners in a multi-tenant fashion (REUSE_RUNNER_MODE=false).
+    * `runner-builder`: This service builds the `runner-image` and exits.
 
 ### Singletenant Mode
 
@@ -72,8 +66,9 @@ This mode is simpler and suitable for local development. It uses a single `runne
     ```
 
 2.  This command will start the following services:
-    * `frontend`: The Angular application, accessible at `http://localhost:80`.
-    * `runner-standalone`: The single runner service listening on port `3000`.
+    * `frontend-singletenant`: The Angular application, accessible at `http://localhost:80`.
+    * `orchestrator-singletenant`: The Node.js service that listens on port `3001` and uses a single, shared runner instance (REUSE_RUNNER_MODE=true).
+    * `runner-builder`: This service builds the `runner-image` and exits.
 
 Once the services are running, you can access the application by opening your browser and navigating to `http://localhost:80`.
 

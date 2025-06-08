@@ -26,7 +26,7 @@ The service exposes the following RESTful API endpoints:
         ```json
         {
           "error": "DOCKER_IMAGE_NOT_FOUND",
-          "message": "Docker image my-taylored-runner-image not found. Build it before running the orchestrator."
+          "message": "Docker image runner-image not found. Ensure it has been built, typically by the 'runner-builder' service."
         }
         ```
         ```json
@@ -73,26 +73,33 @@ The service exposes the following RESTful API endpoints:
 ## 3. Prerequisites
 
 *   **Docker Engine:** Must be installed and running. The orchestrator communicates with Docker via its socket (e.g., `/var/run/docker.sock`).
-*   **Docker Image \`my-taylored-runner-image\`:** This image must be built from the Dockerfile located in `../runner/Dockerfile`.
+*   **Docker Image \`runner-image\`:** This is the image used to spawn runner instances. It is expected to be pre-built, typically by the `runner-builder` service defined in the main `docker-compose.yml` when the application is launched. Manual building is generally not required when using Docker Compose.
     ```bash
+    # If manual building is ever needed (e.g., for isolated testing of the runner):
     # From the 'src/runner' directory
-    docker build -t my-taylored-runner-image .
+    docker build -t runner-image .
     ```
 
 ## 4. Running the Service
 
+The Orchestrator service is typically run as part of the Taylored Snippets Web application using Docker Compose.
+
+To run it standalone (e.g., for development or testing):
 1.  Navigate to the `src/orchestrator` directory.
 2.  Install dependencies:
     ```bash
     npm install
     ```
-3.  Run the service:
+3.  Ensure the `runner-image` Docker image is available locally (see Prerequisites).
+4.  Run the service:
     ```bash
     node orchestrator.js
     ```
-    The service will listen on port 3001 by default.
+    The service will listen on port `3001` by default (can be overridden by the `PORT` environment variable).
 
-## 5. Testing Strategy (Conceptual)
+## 5. Testing Strategy (Conceptual Guidelines)
+
+The testing strategies outlined below are conceptual guidelines. Actual implementation details may vary.
 
 ### Unit Tests (e.g., using Jest, Mocha)
 
@@ -114,7 +121,7 @@ The service exposes the following RESTful API endpoints:
 *   **Provisioning Flow:**
     1.  Send a POST request to `/api/runner/provision`.
     2.  Verify a 201/200 status code and correct JSON response.
-    3.  Use `docker ps` or `dockerode` to confirm a new container based on `my-taylored-runner-image` is running.
+    *   Use `docker ps` or `dockerode` to confirm a new container based on `runner-image` (or the image specified by `DOCKER_IMAGE_NAME`) is running.
     4.  Verify the container has the correct labels (e.g., `taylored-runner-session-id`).
     5.  Attempt to connect to the allocated host port (e.g., with `netcat` or a simple client) to see if the runner service inside the container is responsive.
 *   **Deprovisioning Flow:**
@@ -123,7 +130,7 @@ The service exposes the following RESTful API endpoints:
     3.  Verify a 200 status code.
     4.  Use `docker ps` to confirm the container is stopped and removed.
 *   **Error Cases:**
-    *   Test provisioning when `my-taylored-runner-image` does not exist.
+    *   Test provisioning when the target Docker image does not exist.
     *   Test deprovisioning with an invalid/unknown `sessionId`.
     *   (Advanced) Simulate Docker daemon errors if possible.
 
@@ -154,4 +161,38 @@ The service exposes the following RESTful API endpoints:
     *   Errors encountered during any operation, including potential stack traces (in non-production environments).
 *   A generic error handler logs unhandled exceptions with request context.
 
-EOL
+## 7. Environment Variables
+
+The behavior of the Orchestrator service can be configured using the following environment variables:
+
+*   **`NODE_ENV`**:
+    *   Description: Specifies the environment mode.
+    *   Values: `development`, `production`.
+    *   Default: `development`.
+    *   Effect: In `development` mode, error responses may include more detailed stack traces.
+*   **`REUSE_RUNNER_MODE`**:
+    *   Description: Controls the runner provisioning strategy.
+    *   Values:
+        *   `true`: The orchestrator uses a single, shared runner instance for all sessions. This mode is used by the `orchestrator-singletenant` service in `docker-compose.yml`.
+        *   `false`: The orchestrator provisions a new, isolated Docker container for each user session. This mode is used by the `orchestrator-multitenant` service in `docker-compose.yml`.
+    *   Default: `false`.
+*   **`PORT`**:
+    *   Description: The port on which the Orchestrator service will listen.
+    *   Default: `3001`.
+*   **`DOCKER_IMAGE_NAME`**:
+    *   Description: The name of the Docker image to use for provisioning runner instances.
+    *   Default: `runner-image`.
+    *   Usage: The service will attempt to pull this image if it's not available locally and will use it to create new containers. Ensure this image is accessible to the Docker daemon.
+*   **`RUNNER_CONTAINER_LABEL`**:
+    *   Description: The Docker label key used to tag containers managed by this orchestrator. Used for identifying and cleaning up containers.
+    *   Default: `taylored-runner-session-id`.
+*   **`LOG_LEVEL`**:
+    *   Description: Controls the verbosity of logging.
+    *   Values: `debug`, `info`, `warn`, `error`.
+    *   Default: `info`. `debug` is very verbose.
+*   **`DOCKER_SOCKET_PATH`**:
+    *   Description: Path to the Docker socket.
+    *   Default: `/var/run/docker.sock`.
+*   **`MAX_CONCURRENT_RUNNERS`**:
+    *   Description: Maximum number of concurrent runner containers the orchestrator will manage.
+    *   Default: `10`. (Only enforced if `REUSE_RUNNER_MODE` is `false`)

@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subject, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { io, Socket } from 'socket.io-client'; // Using official socket.io-client
+import { environment } from '../environments/environments';
 
 export interface SnippetOutput {
   id: number;
@@ -22,7 +23,7 @@ export interface SnippetOutput {
   providedIn: 'root'
 })
 export class RunnerService implements OnDestroy {
-  private orchestratorUrl = 'http://localhost:3001'; // Supponendo che l'orchestratore sia in esecuzione qui
+  private orchestratorUrl = environment.orchestrator; // Supponendo che l'orchestratore sia in esecuzione qui
 
   private runnerEndpointSubject = new BehaviorSubject<string | null>(null);
   public runnerEndpoint$: Observable<string | null> = this.runnerEndpointSubject.asObservable();

@@ -10,6 +10,7 @@ const app = express();
 const port = 3001;
 
 const REUSE_RUNNER_MODE = process.env.REUSE_RUNNER_MODE === 'true';
+const RUNNERS_HOST = process.env.RUNNERS_HOST || 'localhost';
 let singletonRunnerInstance = null;
 
 app.use(cors());
@@ -41,7 +42,7 @@ app.post('/api/runner/provision', async (req, res, next) => {
     if (singletonRunnerInstance) {
       return res.json({
         message: 'Returning existing singleton runner.',
-        endpoint: `http://localhost:${singletonRunnerInstance.port}`,
+        endpoint: `${RUNNERS_HOST}:${singletonRunnerInstance.port}`,
         sessionId: singletonRunnerInstance.sessionId
       });
     }
@@ -53,7 +54,7 @@ app.post('/api/runner/provision', async (req, res, next) => {
     const existingRunner = activeRunners.get(sessionId);
     return res.json({
       message: 'Runner already exists for this session.',
-      endpoint: `http://localhost:${existingRunner.port}`,
+      endpoint: `${RUNNERS_HOST}:${existingRunner.port}`,
       sessionId: sessionId
     });
   }
@@ -130,7 +131,7 @@ app.post('/api/runner/provision', async (req, res, next) => {
 
     res.status(201).json({
       message: 'Runner provisioned successfully.',
-      endpoint: allocatedPort ? `http://localhost:${allocatedPort}` : 'N/A (isolated network mode)',
+      endpoint: allocatedPort ? `${RUNNERS_HOST}:${allocatedPort}` : 'N/A (isolated network mode)',
       sessionId: sessionId
     });
 

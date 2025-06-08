@@ -2,6 +2,10 @@ x-frontend-common: &frontend-common
   build:
     context: .
     dockerfile: ./Dockerfile
+    args:
+      production: true
+      orchestrator: 'http://localhost:4001'
+      #WARNING: specify the orchestrator address
   ports:
     - "80:80"
 
@@ -38,6 +42,8 @@ services:
     environment:
       - NODE_ENV=production
       - REUSE_RUNNER_MODE=false
+      - RUNNERS_HOST=http://localhost
+      #WARNING: specify the RUNNERS_HOST address
     profiles: ["multitenant"]
     depends_on:
       runner-builder:

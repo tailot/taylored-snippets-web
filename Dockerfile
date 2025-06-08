@@ -8,6 +8,10 @@ RUN npm install
 
 COPY . .
 
+ARG orchestrator
+
+ENV orchestrator=$orchestrator
+
 RUN npm run build
 
 # Stage 2: Serve the application with Nginx

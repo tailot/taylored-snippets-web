@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "npx tsc setenv.ts && node setenv.js && ng build",
     "test": "ng test"
   },
   "private": true,

@@ -79,22 +79,45 @@ The service exposes the following RESTful API endpoints:
     docker build -t my-taylored-runner-image .
     ```
 
-## 4. Running the Service
+## 4. Configuration
+
+The following environment variables can be used to configure the Orchestrator Service:
+
+*   **`INACTIVE_RUNNER_TIMEOUT_MS`**:
+    *   **Purpose:** Specifies the maximum time (in milliseconds) a runner container can be inactive before it is automatically deprovisioned by the cleanup job.
+    *   **Default value:** Defaults to 30 minutes (1800000 ms) if not set or if an invalid value is provided.
+    *   **Example:** `INACTIVE_RUNNER_TIMEOUT_MS=600000` (for 10 minutes).
+*   **`REUSE_RUNNER_MODE`**:
+    *   **Purpose:** If set to `'true'`, the orchestrator will attempt to reuse a single runner instance for all sessions. This is primarily for development or resource-constrained environments.
+    *   **Default value:** Defaults to `false`.
+    *   **Example:** `REUSE_RUNNER_MODE=true`.
+
+## 5. Running the Service
 
 1.  Navigate to the `src/orchestrator` directory.
 2.  Install dependencies:
     ```bash
     npm install
     ```
-3.  Run the service:
+3.  Set any desired environment variables (see Configuration section).
+4.  Run the service:
     ```bash
     node orchestrator.js
     ```
     The service will listen on port 3001 by default.
 
-## 5. Testing Strategy (Conceptual)
+## 6. Testing
 
-### Unit Tests (e.g., using Jest, Mocha)
+### Running Tests
+
+To run the unit tests, navigate to the `src/orchestrator` directory and use the following command:
+```bash
+npm test
+```
+
+### Testing Strategy (Conceptual)
+
+#### Unit Tests (e.g., using Jest, Mocha)
 
 *   **`getAvailablePort()` utility:** Test its ability to find and release a port.
 *   **Endpoint Logic Mocking:**
@@ -107,8 +130,12 @@ The service exposes the following RESTful API endpoints:
         *   Verify `container.stop()` and `container.remove()` are called.
         *   Test behavior when session ID is missing or runner not found.
 *   **Error Handling:** Test how different errors (e.g., Docker errors, internal logic errors) are caught and propagated to the client as standardized JSON error responses.
+*   **`cleanupInactiveRunners` function:**
+    *   Test removal of inactive runners.
+    *   Test that active runners are not removed.
+    *   Test handling of Docker errors during cleanup.
 
-### Integration Tests
+#### Integration Tests
 
 *   Requires a live Docker daemon.
 *   **Provisioning Flow:**
@@ -122,12 +149,16 @@ The service exposes the following RESTful API endpoints:
     2.  Send a POST request to `/api/runner/deprovision` with the correct `sessionId`.
     3.  Verify a 200 status code.
     4.  Use `docker ps` to confirm the container is stopped and removed.
+*   **Inactive Runner Cleanup:**
+    1.  Provision a runner.
+    2.  Wait for longer than `INACTIVE_RUNNER_TIMEOUT_MS`.
+    3.  Verify the runner is automatically deprovisioned.
 *   **Error Cases:**
     *   Test provisioning when `my-taylored-runner-image` does not exist.
     *   Test deprovisioning with an invalid/unknown `sessionId`.
     *   (Advanced) Simulate Docker daemon errors if possible.
 
-### End-to-End (E2E) Tests
+#### End-to-End (E2E) Tests
 
 *   This involves the entire application stack: Angular Frontend -> Orchestrator Service -> Docker Runner.
 *   **Scenario 1: Successful Code Execution**
@@ -143,7 +174,7 @@ The service exposes the following RESTful API endpoints:
 *   **Scenario 3: Orchestrator Errors**
     *   Simulate orchestrator being down or returning errors during provisioning. Verify frontend handles this gracefully.
 
-## 6. Logging
+## 7. Logging
 
 *   The service uses `console.log`, `console.warn`, and `console.error` for logging.
 *   Logs are timestamped and include a descriptive message.
@@ -151,6 +182,7 @@ The service exposes the following RESTful API endpoints:
     *   Service startup.
     *   API requests (provision, deprovision) with session IDs.
     *   Docker actions (image inspection, container creation, start, stop, removal).
+    *   Cleanup job for inactive runners.
     *   Errors encountered during any operation, including potential stack traces (in non-production environments).
 *   A generic error handler logs unhandled exceptions with request context.
 

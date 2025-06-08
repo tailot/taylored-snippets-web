@@ -10,6 +10,9 @@ const app = express();
 const port = 3001;
 
 const REUSE_RUNNER_MODE = process.env.REUSE_RUNNER_MODE === 'true';
+const DEFAULT_INACTIVE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const INACTIVE_TIMEOUT_MS = parseInt(process.env.INACTIVE_RUNNER_TIMEOUT_MS, 10) > 0 ? parseInt(process.env.INACTIVE_RUNNER_TIMEOUT_MS, 10) : DEFAULT_INACTIVE_TIMEOUT_MS;
+const CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute
 let singletonRunnerInstance = null;
 
 app.use(cors());
@@ -51,6 +54,10 @@ app.post('/api/runner/provision', async (req, res, next) => {
 
   if (activeRunners.has(sessionId)) {
     const existingRunner = activeRunners.get(sessionId);
+    existingRunner.lastActivityTime = Date.now(); // Add this line
+    // Note: If you're using a Map and storing objects, this modification should directly update the object in the Map.
+    // If for some reason it doesn't, you might need to activeRunners.set(sessionId, existingRunner) after updating,
+    // but for standard JavaScript Map behavior with object references, direct modification is fine.
     return res.json({
       message: 'Runner already exists for this session.',
       endpoint: `http://localhost:${existingRunner.port}`,
@@ -119,7 +126,8 @@ app.post('/api/runner/provision', async (req, res, next) => {
         containerId: containerId,
         port: allocatedPort,
         container: containerInstance,
-        sessionId: sessionId
+        sessionId: sessionId,
+        lastActivityTime: Date.now() // Add this line
     };
 
     if (REUSE_RUNNER_MODE) {
@@ -195,6 +203,41 @@ app.post('/api/runner/deprovision', async (req, res, next) => {
   }
 });
 
+async function cleanupInactiveRunners() {
+  console.log('Running cleanup for inactive runners...');
+  const now = Date.now();
+  for (const [sessionId, runner] of activeRunners.entries()) {
+    if (now - runner.lastActivityTime > INACTIVE_TIMEOUT_MS) {
+      console.log(`Runner for session ${sessionId} (container: ${runner.containerId}) is inactive. Removing...`);
+      try {
+        const containerState = await runner.container.inspect().catch(err => {
+          if (err.statusCode === 404) { // Container already removed
+            return null;
+          }
+          throw err; // Other errors should be propagated or logged
+        });
+
+        if (containerState) { // If container exists
+          if (containerState.State.Running) {
+            console.log(`Stopping container ${runner.containerId}...`);
+            await runner.container.stop().catch(e => console.error(`Error stopping container ${runner.containerId}:`, e.message));
+          }
+          console.log(`Removing container ${runner.containerId}...`);
+          await runner.container.remove({ force: true }).catch(e => console.error(`Error removing container ${runner.containerId}:`, e.message));
+        }
+        activeRunners.delete(sessionId);
+        console.log(`Runner for session ${sessionId} (container: ${runner.containerId}) removed successfully due to inactivity.`);
+      } catch (err) {
+        console.error(`Error during cleanup of runner for session ${sessionId} (container: ${runner.containerId}):`, err.message);
+        // Decide if we should remove it from activeRunners even if cleanup failed partially
+        // For now, let's remove it to prevent repeated attempts on a problematic container/runner
+        activeRunners.delete(sessionId);
+      }
+    }
+  }
+  console.log('Finished cleanup for inactive runners.');
+}
+
 app.use((err, req, res, next) => {
   const clientError = {
     error: 'SERVER_ERROR',
@@ -212,4 +255,16 @@ app.listen(port, () => {
   // Startup message can be kept if desired, or removed. For now, I'll remove it to be consistent.
 });
 
-module.exports = app;
+// After app.listen(...)
+setInterval(cleanupInactiveRunners, CLEANUP_INTERVAL_MS);
+
+// For testing purposes:
+const existingExports = module.exports; // Could be 'app' if 'module.exports = app' was used
+module.exports = {
+  ...(typeof existingExports === 'object' && existingExports !== null ? existingExports : { app: existingExports }),
+  __cleanupInactiveRunners: typeof cleanupInactiveRunners !== 'undefined' ? cleanupInactiveRunners : undefined,
+  get __activeRunners() { return typeof activeRunners !== 'undefined' ? activeRunners : undefined; },
+  get __INACTIVE_TIMEOUT_MS() { return typeof INACTIVE_TIMEOUT_MS !== 'undefined' ? INACTIVE_TIMEOUT_MS : undefined; }
+  // Note: activeRunners and INACTIVE_TIMEOUT_MS are exported via getters to ensure tests get the actual variables from the module's scope.
+  // Docker instance is typically mocked via jest.mock('dockerode').
+};

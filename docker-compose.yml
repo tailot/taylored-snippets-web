@@ -5,48 +5,60 @@ x-frontend-common: &frontend-common
   ports:
     - "80:80"
 
+x-orchestrator-common: &orchestrator-common
+  build:
+    context: ./src/orchestrator
+    dockerfile: ./Dockerfile
+  ports:
+    - "3001:3001"
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  command: node orchestrator.js
+  # depends_on will be added specifically for each profile
+
 services:
   # --- SINGLETENANT PROFILE SERVICES ---
   frontend-singletenant:
     <<: *frontend-common
     profiles: ["singletenant"]
     depends_on:
-      - runner-standalone
+      orchestrator-singletenant:
+        condition: service_started
 
   # --- MULTITENANT PROFILE SERVICES ---
   frontend-multitenant:
     <<: *frontend-common
     profiles: ["multitenant"]
     depends_on:
-      - orchestrator
+      orchestrator-multitenant:
+        condition: service_started
 
-  orchestrator:
-    build:
-      context: ./src/orchestrator
-      dockerfile: ./Dockerfile
-    ports:
-      - "3001:3001"
-    # Mount the Docker socket to allow the orchestrator to manage other containers.
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+  orchestrator-multitenant:
+    <<: *orchestrator-common
     environment:
       - NODE_ENV=development
-    command: node orchestrator.js
+      - REUSE_RUNNER_MODE=false
     profiles: ["multitenant"]
-    # The orchestrator's dependency is on the 'runner-image' IMAGE being available, not on a running container.
+    depends_on:
+      runner-builder:
+        condition: service_started
+
+  orchestrator-singletenant:
+    <<: *orchestrator-common
+    environment:
+      - NODE_ENV=development
+      - REUSE_RUNNER_MODE=true
+    profiles: ["singletenant"]
+    depends_on:
+      runner-builder:
+        condition: service_started
 
   # --- RUNNER SERVICE ---
-  runner-standalone:
+  runner-builder:
     build:
       context: ./src/runner
       dockerfile: ./Dockerfile
-    ports:
-      - "3000:3000"
     # This image name is crucial. The orchestrator will use it to start new runners.
     image: runner-image
-    environment:
-      - PORT=3000
-    command: node runner.js
-    # For the 'multitenant' profile, only its image will exist, ready to be used by the orchestrator.
-    profiles: ["singletenant"]
+    # No profiles, ports, environment, or command for a builder service
 

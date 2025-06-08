@@ -210,7 +210,7 @@ describe('SnippetComputeComponent', () => {
       const rootElement = result.documentElement;
       expect(rootElement.tagName).toBe('taylored');
       expect(rootElement.getAttribute('number')).toBe(component.id.toString());
-      expect(rootElement.textContent).toBe(component.value); // Check component.value
+      expect(rootElement.textContent).toBe(`\n${component.value}\n`); // Check component.value
 
       const computeAttr = rootElement.getAttribute('compute');
       expect(computeAttr).toBeTruthy();
@@ -229,7 +229,7 @@ describe('SnippetComputeComponent', () => {
       component.value = 'alert("Test Code");'; // Change value to test
       const result = component.getTayloredBlock();
       const rootElement = result.documentElement;
-      expect(rootElement.textContent).toBe('alert("Test Code");');
+      expect(rootElement.textContent).toBe('\nalert("Test Code");\n');
     });
 
     it('should have a valid Base64 encoded timestamp in the "compute" attribute of the XMLDocument', () => {

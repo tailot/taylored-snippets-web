@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,6 +27,7 @@ export class Sheet {
   snippets: Snippet[] = [];
   private nextId = 0;
   private runnerService = inject(RunnerService);
+  private cdr = inject(ChangeDetectorRef);
 
   addSnippet(type: 'text' | 'compute'): void {
     let newSnippet: Snippet;
@@ -35,7 +36,7 @@ export class Sheet {
     if (type === 'text') {
       newSnippet = new SnippetText();
     } else { // type === 'compute'
-      newSnippet = new SnippetCompute(this.runnerService);
+      newSnippet = new SnippetCompute(this.runnerService, this.cdr);
     }
 
     newSnippet.id = currentId;
@@ -134,7 +135,7 @@ export class Sheet {
           if (item.type === 'text') {
             newSnippet = new SnippetText();
           } else { // item.type === 'compute'
-            newSnippet = new SnippetCompute(this.runnerService);
+            newSnippet = new SnippetCompute(this.runnerService, this.cdr);
           }
 
           newSnippet.id = item.id;

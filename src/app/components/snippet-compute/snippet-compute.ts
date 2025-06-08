@@ -1,4 +1,4 @@
-import { Component, Output, Input, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Output, Input, EventEmitter, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -49,7 +49,7 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
   isRunnerReady = false;
   private subscriptions = new Subscription();
 
-  constructor(private runnerService: RunnerService) {}
+  constructor(private runnerService: RunnerService, private cdr: ChangeDetectorRef) {}
   
   @Input() output?: string;
   @Input() value: string = '';
@@ -59,7 +59,7 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
   getTayloredBlock(): XMLDocument {
     const timestamp = Date.now().toString();
     const encodedTimestamp = btoa(timestamp);
-    const xmlString = `<taylored number="${this.id}" compute="${encodedTimestamp}">${this.value}</taylored>`;
+    const xmlString = `<taylored number="${this.id}" compute="${encodedTimestamp}">\n${this.value}\n</taylored>`;
     return new DOMParser().parseFromString(xmlString, "text/xml");
   }
 
@@ -119,7 +119,8 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
           if (result.error) {
             this.output = `Error: ${result.error}`;
           } else if (result.output) {
-            this.output = result.output;
+            this.output += result.output;
+            this.cdr.detectChanges();
           }
           // If neither error nor output is present for this ID, this.output remains unchanged.
         }

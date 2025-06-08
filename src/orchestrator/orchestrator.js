@@ -9,6 +9,11 @@ const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const app = express();
 const port = 3001;
 
+// --- MODIFICA INIZIO: Leggi la variabile d'ambiente e inizializza lo stato ---
+const REUSE_RUNNER_MODE = process.env.REUSE_RUNNER_MODE === 'true';
+let singletonRunnerInstance = null; // Memorizza l'istanza del runner condiviso
+// --- MODIFICA FINE ---
+
 app.use(cors());
 app.use(express.json());
 
@@ -45,6 +50,19 @@ app.get('/', (req, res) => {
 });
 
 app.post('/api/runner/provision', async (req, res, next) => {
+  // --- MODIFICA INIZIO: Logica per la modalità REUSE_RUNNER_MODE ---
+  if (REUSE_RUNNER_MODE) {
+    if (singletonRunnerInstance) {
+      logAction('info', `[REUSE_MODE] Restituzione dell'istanza runner esistente sulla porta ${singletonRunnerInstance.port}`);
+      return res.json({
+        message: 'Returning existing singleton runner.',
+        endpoint: `http://localhost:${singletonRunnerInstance.port}`,
+        sessionId: singletonRunnerInstance.sessionId
+      });
+    }
+    logAction('info', '[REUSE_MODE] Nessun runner singleton trovato, ne verrà creato uno nuovo.');
+  }
+  // --- MODIFICA FINE ---
   const sessionId = req.headers['x-session-id'] || uuidv4();
   const { networkMode } = req.body; 
 
@@ -129,11 +147,21 @@ app.post('/api/runner/provision', async (req, res, next) => {
     const containerData = await containerInstance.inspect();
     const containerId = containerData.Id;
 
-    activeRunners.set(sessionId, {
+    // --- MODIFICA INIZIO: Salva l'istanza in base alla modalità ---
+    const runnerDetails = {
         containerId: containerId,
         port: allocatedPort,
-        container: containerInstance
-    });
+        container: containerInstance,
+        sessionId: sessionId // Anche il singleton ha un ID di sessione (il primo che lo ha creato)
+    };
+
+    if (REUSE_RUNNER_MODE) {
+        singletonRunnerInstance = runnerDetails;
+        logAction('info', `[REUSE_MODE] Runner singleton salvato. Container ID: ${containerId}`);
+    } else {
+        activeRunners.set(sessionId, runnerDetails);
+    }
+    // --- MODIFICA FINE ---
 
     logAction('info', `Runner provisioned successfully for session ${sessionId}. Container ID: ${containerId}, Host Port: ${allocatedPort || 'N/A'}`);
     res.status(201).json({
@@ -164,6 +192,12 @@ app.post('/api/runner/provision', async (req, res, next) => {
 });
 
 app.post('/api/runner/deprovision', async (req, res, next) => {
+  // --- MODIFICA INIZIO: Impedisci il deprovisioning in REUSE_RUNNER_MODE ---
+  if (REUSE_RUNNER_MODE) {
+      logAction('warn', '[REUSE_MODE] Deprovisioning request ignored.');
+      return res.status(200).json({ message: 'Deprovisioning is disabled in REUSE_RUNNER_MODE.' });
+  }
+  // --- MODIFICA FINE ---
   const sessionId = req.body.sessionId || req.headers['x-session-id'];
   logAction('info', `POST /api/runner/deprovision - Attempting for session: ${sessionId}`);
 
@@ -238,6 +272,13 @@ app.use((err, req, res, next) => {
 
 app.listen(port, () => {
   logAction('info', `Orchestrator service listening on port ${port}`);
+  // --- MODIFICA INIZIO: Logga la modalità di avvio ---
+  if (REUSE_RUNNER_MODE) {
+    logAction('warn', 'Orchestrator is running in REUSE_RUNNER_MODE. A single runner instance will be shared.');
+  } else {
+    logAction('info', 'Orchestrator is running in standard multi-tenant mode.');
+  }
+  // --- MODIFICA FINE ---
 });
 
 module.exports = app;

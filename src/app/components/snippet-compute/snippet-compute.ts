@@ -1,4 +1,4 @@
-import { Component, Output, Input, EventEmitter, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, Output, Input, OnInit, OnDestroy, ChangeDetectorRef, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -55,6 +55,7 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
   @Input() value: string = '';
   @Input() id!: number;
   @Output() updateSnippet = new EventEmitter<SnippetText | SnippetCompute>();
+  @Output() finishedProcessing = new EventEmitter<SnippetCompute>();
 
   getTayloredBlock(): XMLDocument {
     const timestamp = Date.now().toString();
@@ -121,6 +122,9 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
           } else if (result.output) {
             this.output += result.output;
             this.cdr.detectChanges();
+            if (this.output.endsWith('Finished processing. Successfully created 1 taylored file(s).')) {
+              this.finishedProcessing.emit(this);
+            }
           }
           // If neither error nor output is present for this ID, this.output remains unchanged.
         }

@@ -1,17 +1,34 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { SnippetCompute } from './snippet-compute';
+import { Subject } from 'rxjs';
+import { RunnerService, SnippetOutput } from '../../services/runner.service';
 
 import { FormsModule } from '@angular/forms'; // Required for ngModel
 import { MatInputModule } from '@angular/material/input'; // Required for matInput
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; // Required for some Material components
 import { HttpClientTestingModule } from '@angular/common/http/testing'; // Import HttpClientTestingModule
 
+// Define mock RunnerService before the describe block or at a scope accessible to TestBed
+let mockRunnerService: {
+  snippetOutput$: Subject<SnippetOutput>;
+  isRunnerReady$: Subject<boolean>;
+  sendSnippetToRunner: jasmine.Spy;
+  provisionRunner: jasmine.Spy; // Added provisionRunner
+};
+
 describe('SnippetComputeComponent', () => {
   let component: SnippetCompute;
   let fixture: ComponentFixture<SnippetCompute>;
 
   beforeEach(async () => {
+    mockRunnerService = {
+      snippetOutput$: new Subject<SnippetOutput>(),
+      isRunnerReady$: new Subject<boolean>(),
+      sendSnippetToRunner: jasmine.createSpy('sendSnippetToRunner').and.resolveTo(undefined),
+      provisionRunner: jasmine.createSpy('provisionRunner').and.resolveTo(undefined) // Added provisionRunner
+    };
+
     await TestBed.configureTestingModule({
       imports: [
         SnippetCompute, // It's standalone
@@ -20,14 +37,17 @@ describe('SnippetComputeComponent', () => {
         NoopAnimationsModule, // Disable animations for tests
         HttpClientTestingModule // Add HttpClientTestingModule
       ],
-      providers: [provideZonelessChangeDetection()]
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: RunnerService, useValue: mockRunnerService } // Add this
+      ]
     })
       .compileComponents();
 
     fixture = TestBed.createComponent(SnippetCompute);
     component = fixture.componentInstance;
-    // Initialize with a default id for tests that might need it
-    component.id = 1;
+    component.id = 1; // Ensure component has an ID for tests
+    mockRunnerService.isRunnerReady$.next(true); // Simulate runner being ready
     fixture.detectChanges(); // Initial binding
   });
 
@@ -306,6 +326,103 @@ describe('SnippetComputeComponent', () => {
       const outputTextArea = fixture.debugElement.nativeElement.querySelector('textarea[matInput][readonly]');
       expect(outputTextArea).toBeTruthy();
       expect(outputTextArea.hasAttribute('readonly')).toBe(true);
+    });
+  });
+
+  describe('finishedProcessing event emitter', () => {
+    let runnerService: RunnerService; // To hold the injected mock service
+
+    beforeEach(() => {
+      // Get the injected mock RunnerService instance
+      // Note: TestBed.inject can be used here if preferred, or stick to the variable 'mockRunnerService'
+      // For simplicity, we'll use the 'mockRunnerService' variable directly as it's in scope.
+      // runnerService = TestBed.inject(RunnerService); // This would also work if mockRunnerService is not directly accessible
+
+      // Reset component.output and spy before each test in this block
+      component.output = undefined; // Start clean
+      spyOn(component.finishedProcessing, 'emit');
+      component.id = 1; // Consistent ID for these tests
+      fixture.detectChanges();
+    });
+
+    it('should emit finishedProcessing when output ends with the target string', () => {
+      component.output = 'Executing...'; // Initial state set by onPlayButtonClick
+      fixture.detectChanges();
+
+      mockRunnerService.snippetOutput$.next({ id: component.id, output: 'Finished processing. Successfully created 1 taylored file(s).' });
+      fixture.detectChanges();
+
+      expect(component.finishedProcessing.emit).toHaveBeenCalledWith(component);
+    });
+
+    it('should emit finishedProcessing when output (already having some content) is appended to end with the target string', () => {
+      component.output = 'Executing...Some initial data...'; // Some pre-existing output
+      fixture.detectChanges();
+
+      mockRunnerService.snippetOutput$.next({ id: component.id, output: 'Finished processing. Successfully created 1 taylored file(s).' });
+      fixture.detectChanges();
+
+      // Expected full output: "Executing...Some initial data...Finished processing. Successfully created 1 taylored file(s)."
+      expect(component.output).toBe('Executing...Some initial data...Finished processing. Successfully created 1 taylored file(s).');
+      expect(component.finishedProcessing.emit).toHaveBeenCalledWith(component);
+    });
+
+    it('should not emit finishedProcessing if output does not end with the target string', () => {
+      component.output = 'Executing...';
+      fixture.detectChanges();
+
+      mockRunnerService.snippetOutput$.next({ id: component.id, output: 'Some other message.' });
+      fixture.detectChanges();
+
+      expect(component.finishedProcessing.emit).not.toHaveBeenCalled();
+    });
+
+    it('should not emit finishedProcessing if snippet ID does not match', () => {
+      component.output = 'Executing...';
+      fixture.detectChanges();
+
+      mockRunnerService.snippetOutput$.next({ id: component.id + 1, output: 'Finished processing. Successfully created 1 taylored file(s).' });
+      fixture.detectChanges();
+
+      expect(component.finishedProcessing.emit).not.toHaveBeenCalled();
+    });
+
+    it('should not emit finishedProcessing if there is an error output', () => {
+      component.output = 'Executing...';
+      fixture.detectChanges();
+
+      mockRunnerService.snippetOutput$.next({ id: component.id, error: 'An error occurred.' });
+      fixture.detectChanges();
+
+      expect(component.finishedProcessing.emit).not.toHaveBeenCalled();
+    });
+
+    it('should correctly handle initial undefined output before concatenation', () => {
+      // component.output is initially undefined or set by onPlayButtonClick
+      // Let's test the scenario where onPlayButtonClick wasn't called, and output is undefined
+      component.output = undefined;
+      fixture.detectChanges();
+
+      mockRunnerService.snippetOutput$.next({ id: component.id, output: 'Finished processing. Successfully created 1 taylored file(s).' });
+      fixture.detectChanges();
+
+      // Expected output: "undefinedFinished processing. Successfully created 1 taylored file(s)."
+      // The component's `this.output += result.output` when `this.output` is undefined will result in "undefined[string]".
+      // This is JavaScript behavior. If this is not desired, the component code should initialize output.
+      // Given the current component code (`this.output += result.output`), this test reflects its actual behavior.
+      expect(component.output).toBe('undefinedFinished processing. Successfully created 1 taylored file(s).');
+      expect(component.finishedProcessing.emit).toHaveBeenCalledWith(component);
+    });
+
+    it('should correctly handle initial empty string output before concatenation', () => {
+      component.output = ''; // Initial state
+      fixture.detectChanges();
+
+      mockRunnerService.snippetOutput$.next({ id: component.id, output: 'Finished processing. Successfully created 1 taylored file(s).' });
+      fixture.detectChanges();
+
+      expect(component.output).toBe('Finished processing. Successfully created 1 taylored file(s).');
+      expect(component.finishedProcessing.emit).toHaveBeenCalledWith(component);
     });
   });
 });

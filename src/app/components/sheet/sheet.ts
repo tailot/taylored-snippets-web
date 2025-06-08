@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef, Output, EventEmitter } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common'; // For *ngFor, *ngIf, etc.
 import { SnippetText } from '../snippet-text/snippet-text';
 import { SnippetCompute } from '../snippet-compute/snippet-compute';
 import { RunnerService } from '../../services/runner.service';
+import { MenuItem } from '../side-menu/menu-item';
 
 export interface Snippet {
   id: number;
@@ -28,6 +29,8 @@ export class Sheet {
   private nextId = 0;
   private runnerService = inject(RunnerService);
   private cdr = inject(ChangeDetectorRef);
+  @Output() newMenuItem = new EventEmitter<MenuItem>();
+  private executionCounter: number = 1;
 
   addSnippet(type: 'text' | 'compute'): void {
     let newSnippet: Snippet;
@@ -169,5 +172,14 @@ export class Sheet {
     } else {
       console.log('No files dropped');
     }
+  }
+
+  public handleFinishedProcessing(snippetComputeInstance: SnippetCompute): void {
+    const menuItem: MenuItem = {
+      label: "Execution " + this.executionCounter,
+      snippets: [...this.snippets] // Create a shallow copy
+    };
+    this.newMenuItem.emit(menuItem);
+    this.executionCounter++;
   }
 }

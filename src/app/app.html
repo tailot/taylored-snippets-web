@@ -13,6 +13,6 @@
     <app-side-menu [menuItems]="sideMenuItems" (snippetsSelected)="onSnippetsSelected($event)"></app-side-menu>
   </mat-sidenav>
   <mat-sidenav-content>
-    <app-sheet></app-sheet>
+    <app-sheet (newMenuItem)="onNewMenuItem($event)"></app-sheet>
   </mat-sidenav-content>
 </mat-sidenav-container>

@@ -62,4 +62,8 @@ export class App implements OnInit {
   public onSnippetsSelected(snippets: Snippet[]) {
     this.sheetComponent.populateSnippets(snippets);
   }
+
+  public onNewMenuItem(menuItem: MenuItem): void {
+    this.sideMenuItems.push(menuItem);
+  }
 }

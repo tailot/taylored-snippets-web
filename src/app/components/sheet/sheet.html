@@ -20,7 +20,7 @@
         </app-snippet-text>
         }
         @case ('compute') {
-        <app-snippet-compute [id]="snippet.id" [value]="snippet.value" [output]="snippet.output" (updateSnippet)="updateSnippet($event)">
+        <app-snippet-compute [id]="snippet.id" [value]="snippet.value" [output]="snippet.output" (updateSnippet)="updateSnippet($event)" (finishedProcessing)="handleFinishedProcessing($event)">
         </app-snippet-compute>
         }
         }

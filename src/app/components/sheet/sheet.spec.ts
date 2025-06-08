@@ -4,7 +4,10 @@ import { By } from '@angular/platform-browser';
 import { provideZonelessChangeDetection, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 
-import { Sheet } from './sheet';
+import { Sheet, Snippet } from './sheet'; // For creating mock snippets
+import { SnippetCompute } from '../snippet-compute/snippet-compute';
+import { MenuItem } from '../side-menu/menu-item';
+import { RunnerService } from '../../services/runner.service';
 
 describe('SheetComponent', () => {
   let component: Sheet;
@@ -286,4 +289,99 @@ describe('SheetComponent', () => {
   });
 
   // Problematic describe block removed
+
+  describe('handleFinishedProcessing method and newMenuItem emitter', () => {
+    let mockRunnerService: Partial<RunnerService>;
+    let mockSnippetComputeInstance: SnippetCompute;
+
+    beforeEach(() => {
+      // Create a basic mock for RunnerService if SnippetCompute needs it.
+      // SnippetCompute's constructor takes RunnerService.
+      // This doesn't need to be a full mock unless SnippetCompute's constructor logic is complex.
+      mockRunnerService = {
+        // Mock any methods/properties of RunnerService that SnippetCompute's constructor might access
+        // For this test, SnippetCompute is mostly a data carrier.
+        // isRunnerReady$: new Subject<boolean>(), // Example if needed
+        // snippetOutput$: new Subject<SnippetOutput>() // Example if needed
+      };
+
+      // We need ChangeDetectorRef for SnippetCompute constructor
+      const cdr = fixture.componentRef.injector.get(ChangeDetectorRef);
+      const runnerService = TestBed.inject(RunnerService); // Get the actual or mocked RunnerService
+
+      // Create a mock SnippetCompute instance to pass to handleFinishedProcessing
+      // This instance is created using its actual class but with potentially mocked dependencies.
+      mockSnippetComputeInstance = new SnippetCompute(runnerService, cdr);
+      mockSnippetComputeInstance.id = 123;
+      mockSnippetComputeInstance.value = '#!/bin/bash\necho "Test"';
+      mockSnippetComputeInstance.type = 'compute';
+      // Explicitly define getTayloredBlock for the mock instance if it's part of the Snippet interface
+      mockSnippetComputeInstance.getTayloredBlock = () => {
+          const doc = new DOMParser().parseFromString('<taylored compute="true"></taylored>', "text/xml");
+          return doc;
+      };
+    });
+
+    it('should correctly process finishedProcessing, create MenuItem, and emit newMenuItem', () => {
+      spyOn(component.newMenuItem, 'emit');
+
+      // Setup initial snippets in the sheet
+      const textSnippet: Snippet = {
+        id: 1, type: 'text', value: 'Hello',
+        getTayloredBlock: () => new DOMParser().parseFromString('<taylored text="true"></taylored>', "text/xml")
+      };
+      component.snippets = [textSnippet, mockSnippetComputeInstance];
+      const expectedSnippetsInMenuItem = [...component.snippets]; // Capture the state
+
+      fixture.detectChanges();
+
+      // Call the handler directly
+      component.handleFinishedProcessing(mockSnippetComputeInstance);
+
+      expect(component.newMenuItem.emit).toHaveBeenCalledTimes(1);
+      const emittedMenuItem = (component.newMenuItem.emit as jasmine.Spy).calls.first().args[0] as MenuItem;
+
+      expect(emittedMenuItem.label).toBe('Execution 1');
+      expect(emittedMenuItem.snippets).toEqual(expectedSnippetsInMenuItem); // Check for value equality
+      expect(emittedMenuItem.snippets).not.toBe(expectedSnippetsInMenuItem); // Ensure it's a copy
+      expect(component.executionCounter).toBe(2);
+
+      // Call it again to check counter increment and label
+      component.handleFinishedProcessing(mockSnippetComputeInstance);
+      expect(component.newMenuItem.emit).toHaveBeenCalledTimes(2);
+      const emittedMenuItem2 = (component.newMenuItem.emit as jasmine.Spy).calls.mostRecent().args[0] as MenuItem;
+
+      expect(emittedMenuItem2.label).toBe('Execution 2');
+      expect(component.executionCounter).toBe(3);
+    });
+
+    it('should call handleFinishedProcessing when app-snippet-compute emits finishedProcessing', async () => { // Made async
+      spyOn(component, 'handleFinishedProcessing').and.callThrough(); // Spy on the actual method
+      spyOn(component.newMenuItem, 'emit'); // Also spy on the emitter to check final output
+
+      component.addSnippet('compute'); // This adds a SnippetCompute instance
+      fixture.detectChanges();
+      await fixture.whenStable(); // Wait for component to render
+      fixture.detectChanges();
+
+
+      const computeSnippetDebugElement = fixture.debugElement.query(By.css('app-snippet-compute'));
+      expect(computeSnippetDebugElement).withContext('app-snippet-compute element should be found').toBeTruthy();
+
+      const computeSnippetInstance = computeSnippetDebugElement.componentInstance as SnippetCompute;
+      expect(computeSnippetInstance).withContext('SnippetCompute instance should exist').toBeTruthy();
+
+      // Manually emit the event from the child
+      computeSnippetInstance.finishedProcessing.emit(computeSnippetInstance);
+      fixture.detectChanges();
+
+      expect(component.handleFinishedProcessing).toHaveBeenCalledWith(computeSnippetInstance);
+      expect(component.handleFinishedProcessing).toHaveBeenCalledTimes(1);
+
+      // Verify that newMenuItem was also called as a result of handleFinishedProcessing
+      expect(component.newMenuItem.emit).toHaveBeenCalledTimes(1);
+      const emittedMenuItem = (component.newMenuItem.emit as jasmine.Spy).calls.first().args[0] as MenuItem;
+      expect(emittedMenuItem.label).toBe('Execution 1');
+    });
+  });
 });

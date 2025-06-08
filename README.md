@@ -1,6 +1,6 @@
 # Taylored Snippets Web
 
-This is an Angular web application project designed to create, manage, and run text and code "snippets". The application can be run in two distinct modes: **singletenant**, which uses a single shared execution service, and **multitenant**, which provides an isolated Docker execution environment for each user session via an orchestration service.
+This is an Angular web application project designed to create, manage, and run text and code "snippets", offering isolated execution environments for each snippet. The application can be run in two distinct modes: **singletenant**, which uses a single shared execution service, and **multitenant**, which provides an isolated Docker execution environment for each user session via an orchestration service.
 
 ## Project Structure
 
@@ -36,7 +36,7 @@ Before you start, make sure you have the following installed:
 
 ## Building the Runner Image
 
-The `runner-image`, which is used by the orchestrator to create runner instances, is automatically built by Docker Compose when you launch the application using either the `multitenant` or `singletenant` profile. This is handled by the `runner-builder` service defined in the `docker-compose.yml` file.
+The `runner-image`, named `runner-image` as defined in `docker-compose.yml`, is crucial for the application's operation. It contains the necessary environment for code execution and is used by the orchestrator service in multitenant mode to create isolated runner instances for each user session. This image is automatically built by the `runner-builder` service within Docker Compose when you launch the application using either the `multitenant` or `singletenant` profile.
 
 ## How to Launch the Application
 

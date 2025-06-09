@@ -1,6 +1,7 @@
-import { Component, HostListener, inject, ChangeDetectorRef, Output, EventEmitter } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
+import { Subscription } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule } from '@angular/common'; // For *ngFor, *ngIf, etc.
@@ -24,8 +25,11 @@ export interface Snippet {
   templateUrl: './sheet.html',
   styleUrl: './sheet.sass'
 })
-export class Sheet {
+export class Sheet implements OnInit, OnDestroy {
   snippets: Snippet[] = [];
+  public listedFiles: any[] = [];
+  public currentListingPath: string = './'; // To track the currently displayed directory path
+  private directoryListingSubscription: Subscription | undefined;
   private nextId = 0;
   private runnerService = inject(RunnerService);
   private cdr = inject(ChangeDetectorRef);
@@ -181,5 +185,82 @@ export class Sheet {
     };
     this.newMenuItem.emit(menuItem);
     this.executionCounter++;
+  }
+
+  ngOnInit(): void {
+    this.directoryListingSubscription = this.runnerService.directoryListing$.subscribe(listing => {
+      if (listing && Array.isArray(listing.files)) {
+        this.listedFiles = listing.files;
+        // Ensure currentListingPath correctly reflects the listed directory, especially for navigating up (e.g. handling '..')
+        // For now, directly set it from the event, assuming the runner provides the correct absolute/relative path.
+        this.currentListingPath = listing.path;
+        this.cdr.detectChanges();
+      } else {
+        console.warn('Received malformed or empty directory listing:', listing);
+        this.listedFiles = []; // Clear files on malformed data
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  public listCurrentDirectory(path: string = './'): void {
+    // The path argument will be the new path to list, e.g., './', 'subdir/', '../'
+    this.runnerService.listRunnerDirectory(path);
+  }
+
+  public downloadSelectedFile(filename: string): void {
+    const sessionId = this.runnerService.getCurrentSessionId();
+    if (!sessionId) {
+      console.error("Cannot download file: Session ID is not available.");
+      // TODO: Show user-facing error
+      return;
+    }
+
+    // Construct the full path relative to the runner's temp directory root.
+    // this.currentListingPath is the path of the directory currently being viewed.
+    // filename is the name of the file within that directory.
+    let fullPath = '';
+    if (this.currentListingPath === './' || this.currentListingPath === '.' ) {
+      fullPath = filename;
+    } else if (this.currentListingPath.endsWith('/')) {
+      fullPath = this.currentListingPath + filename;
+    } else {
+      fullPath = this.currentListingPath + '/' + filename;
+    }
+
+    // Remove leading './' if present, as btoa might not like it or orchestrator might not expect it.
+    if (fullPath.startsWith('./')) {
+      fullPath = fullPath.substring(2);
+    }
+
+    this.runnerService.downloadFile(sessionId, fullPath).subscribe({
+      next: (blob) => {
+        try {
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = filename;
+          document.body.appendChild(anchor);
+          anchor.click();
+          document.body.removeChild(anchor);
+          URL.revokeObjectURL(url);
+          console.log(`File ${filename} download initiated.`);
+        } catch (e) {
+          console.error('Error creating object URL or triggering download:', e);
+          // TODO: Show user-facing error for client-side download issues
+        }
+      },
+      error: (err) => {
+        console.error(`Error downloading file ${filename}:`, err);
+        // TODO: Show user-facing error from service
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.directoryListingSubscription) {
+      this.directoryListingSubscription.unsubscribe();
+    }
+    // Check if other subscriptions from this component need cleanup.
   }
 }

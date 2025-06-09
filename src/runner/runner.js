@@ -42,6 +42,7 @@ io.on('connection', (socket) => {
     let tempDir;
     try {
       tempDir = tmp.dirSync({ unsafeCleanup: true });
+      socket.currentDir = tempDir; // Store tempDir for this connection
       const tempDirPath = tempDir.name;
       
       const git = simpleGit(tempDirPath);
@@ -77,6 +78,62 @@ io.on('connection', (socket) => {
       socket.emit('tayloredRunError', { id: numberValue ? parseInt(numberValue, 10) : null, error: `Server-side error: ${err.message}` });
     } finally {
       // tempDir cleanup is handled by tmp.dirSync with unsafeCleanup: true
+    }
+  });
+
+  socket.on('listDirectory', async (requestData) => {
+    const currentDir = socket.currentDir;
+
+    if (!currentDir || !currentDir.name) {
+      return socket.emit('tayloredRunError', { error: 'Environment not initialized. Please run tayloredRun first.' });
+    }
+
+    const requestedPath = requestData && requestData.path ? requestData.path : './';
+    const targetPath = path.resolve(currentDir.name, requestedPath);
+
+    if (!targetPath.startsWith(currentDir.name)) {
+      return socket.emit('tayloredRunError', { error: 'Access denied: Path is outside the allowed directory.' });
+    }
+
+    try {
+      const entries = await fs.readdir(targetPath, { withFileTypes: true });
+      const files = entries.map(entry => ({ name: entry.name, isDirectory: entry.isDirectory() }));
+      socket.emit('directoryListing', { path: requestedPath, files: files });
+    } catch (error) {
+      socket.emit('tayloredRunError', { error: `Error listing directory ${requestedPath}: ${error.message}` });
+    }
+  });
+
+  socket.on('downloadFile', async (requestData) => {
+    const currentDir = socket.currentDir;
+
+    if (!currentDir || !currentDir.name) {
+      return socket.emit('tayloredRunError', { error: 'Environment not initialized. Please run tayloredRun first.' });
+    }
+
+    const requestedPath = requestData && requestData.path ? requestData.path : null;
+
+    if (!requestedPath) {
+      return socket.emit('tayloredRunError', { error: 'File path is required.' });
+    }
+
+    const filePath = path.resolve(currentDir.name, requestedPath);
+
+    if (!filePath.startsWith(currentDir.name)) {
+      return socket.emit('tayloredRunError', { error: 'Access denied: Path is outside the allowed directory.' });
+    }
+
+    try {
+      const stats = await fs.stat(filePath);
+
+      if (!stats.isFile()) {
+        return socket.emit('tayloredRunError', { error: 'Path is not a file.' });
+      }
+
+      const fileContent = await fs.readFile(filePath);
+      socket.emit('fileContent', { path: requestedPath, content: fileContent });
+    } catch (error) {
+      socket.emit('tayloredRunError', { error: `Error downloading file ${requestedPath}: ${error.message}` });
     }
   });
 });

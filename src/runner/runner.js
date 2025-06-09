@@ -18,10 +18,18 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3000;
 
+// --- MODIFICA INIZIO ---
+// Definisce la directory principale per le operazioni sui file.
+// In questo modo il file manager non dipende più da una directory temporanea.
+const CONTAINER_ROOT = '/';
+// --- MODIFICA FINE ---
+
 io.on('connection', (socket) => {
   socket.on('disconnect', () => {
   });
 
+  // La logica di 'tayloredRun' rimane invariata, continua a usare una directory temporanea
+  // per l'esecuzione isolata degli snippet.
   socket.on('tayloredRun', async (xmlDataRequest) => {
     const xmlData = xmlDataRequest.body;
     
@@ -41,8 +49,8 @@ io.on('connection', (socket) => {
 
     let tempDir;
     try {
+      // Questa directory temporanea è usata solo per l'esecuzione di taylored.
       tempDir = tmp.dirSync({ unsafeCleanup: true });
-      socket.currentDir = tempDir; // Store tempDir for this connection
       const tempDirPath = tempDir.name;
       
       const git = simpleGit(tempDirPath);
@@ -77,49 +85,46 @@ io.on('connection', (socket) => {
     } catch (err) {
       socket.emit('tayloredRunError', { id: numberValue ? parseInt(numberValue, 10) : null, error: `Server-side error: ${err.message}` });
     } finally {
-      // tempDir cleanup is handled by tmp.dirSync with unsafeCleanup: true
+      // La pulizia di tempDir è gestita da tmp.dirSync con unsafeCleanup: true
     }
   });
 
+  // --- MODIFICA INIZIO ---
+  // Logica aggiornata per elencare le directory partendo dalla root del container.
   socket.on('listDirectory', async (requestData) => {
-    const currentDir = socket.currentDir;
+    const requestedPath = requestData && requestData.path ? requestData.path : CONTAINER_ROOT;
+    
+    // Risolve il percorso richiesto in modo sicuro partendo dalla root.
+    const targetPath = path.resolve(CONTAINER_ROOT, requestedPath);
 
-    if (!currentDir || !currentDir.name) {
-      return socket.emit('tayloredRunError', { error: 'Environment not initialized. Please run tayloredRun first.' });
-    }
-
-    const requestedPath = requestData && requestData.path ? requestData.path : './';
-    const targetPath = path.resolve(currentDir.name, requestedPath);
-
-    if (!targetPath.startsWith(currentDir.name)) {
+    // Controllo di sicurezza per evitare di uscire dalla directory root.
+    if (!targetPath.startsWith(CONTAINER_ROOT)) {
       return socket.emit('tayloredRunError', { error: 'Access denied: Path is outside the allowed directory.' });
     }
 
     try {
       const entries = await fs.readdir(targetPath, { withFileTypes: true });
       const files = entries.map(entry => ({ name: entry.name, isDirectory: entry.isDirectory() }));
-      socket.emit('directoryListing', { path: requestedPath, files: files });
+      
+      // Ritorna il percorso che è stato effettivamente listato per coerenza.
+      socket.emit('directoryListing', { path: targetPath, files: files });
     } catch (error) {
       socket.emit('tayloredRunError', { error: `Error listing directory ${requestedPath}: ${error.message}` });
     }
   });
 
+  // Logica aggiornata per scaricare file partendo dalla root del container.
   socket.on('downloadFile', async (requestData) => {
-    const currentDir = socket.currentDir;
-
-    if (!currentDir || !currentDir.name) {
-      return socket.emit('tayloredRunError', { error: 'Environment not initialized. Please run tayloredRun first.' });
-    }
-
     const requestedPath = requestData && requestData.path ? requestData.path : null;
 
     if (!requestedPath) {
       return socket.emit('tayloredRunError', { error: 'File path is required.' });
     }
 
-    const filePath = path.resolve(currentDir.name, requestedPath);
+    const filePath = path.resolve(CONTAINER_ROOT, requestedPath);
 
-    if (!filePath.startsWith(currentDir.name)) {
+    // Controllo di sicurezza.
+    if (!filePath.startsWith(CONTAINER_ROOT)) {
       return socket.emit('tayloredRunError', { error: 'Access denied: Path is outside the allowed directory.' });
     }
 
@@ -136,6 +141,7 @@ io.on('connection', (socket) => {
       socket.emit('tayloredRunError', { error: `Error downloading file ${requestedPath}: ${error.message}` });
     }
   });
+  // --- MODIFICA FINE ---
 });
 
 httpServer.listen(PORT, () => {

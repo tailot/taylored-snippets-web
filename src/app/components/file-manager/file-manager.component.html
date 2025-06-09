@@ -5,8 +5,9 @@
     <strong>Current Path:</strong> {{ currentListingPath }}
   </div>
 
-  <button (click)="listCurrentDirectory('./')">Refresh Root</button>
-  <button (click)="goToParentDirectory()" [disabled]="currentListingPath === './' || currentListingPath === '/'">Go Up</button>
+  <button mat-stroked-button (click)="listCurrentDirectory('./')"><mat-icon>sync</mat-icon></button>
+  <button mat-stroked-button (click)="goToParentDirectory()" [disabled]="currentListingPath === './' || currentListingPath === '/'"><mat-icon>subdirectory_arrow_left</mat-icon></button>
+
 
   @if (listedFiles && listedFiles.length > 0) {
     <ul>
@@ -14,17 +15,9 @@
         <li>
           <span>
             @if (item.isDirectory) {
-              <span>[D]</span>
+              <button mat-stroked-button (click)="listCurrentDirectory(currentListingPath.endsWith('/') ? (currentListingPath + item.name + '/') : (currentListingPath + '/' + item.name + '/'))"><mat-icon>folder</mat-icon>{{ item.name }}</button>
             } @else {
-              <span>[F]</span>
-            }
-            {{ item.name }}
-          </span>
-          <span style="margin-left: 10px;">
-            @if (item.isDirectory) {
-              <button (click)="listCurrentDirectory(currentListingPath.endsWith('/') ? (currentListingPath + item.name + '/') : (currentListingPath + '/' + item.name + '/'))">Enter</button>
-            } @else {
-              <button (click)="downloadSelectedFile(item.name)">Download</button>
+              <button mat-stroked-button (click)="downloadSelectedFile(item.name)"><mat-icon>insert_drive_file</mat-icon>{{ item.name }}</button>
             }
           </span>
         </li>

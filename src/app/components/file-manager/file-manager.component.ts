@@ -1,14 +1,15 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
+import { MatIconModule } from '@angular/material/icon'; // Added
 import { RunnerService, FileContent } from '../../services/runner.service';
 
 @Component({
   selector: 'app-file-manager',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule], // Added MatIconModule
   templateUrl: './file-manager.component.html',
-  styleUrls: ['./file-manager.component.css']
+  styleUrls: ['./file-manager.component.sass']
 })
 export class FileManagerComponent implements OnInit, OnDestroy {
   public listedFiles: any[] = [];

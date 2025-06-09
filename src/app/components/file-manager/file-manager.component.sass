@@ -1,0 +1,29 @@
+/* Add your styles here */
+
+// Ensure icons are vertically aligned with the text
+mat-icon
+  vertical-align: middle
+  margin-right: 5px
+
+// Add some margin to the buttons within list items for better spacing
+ul
+  list-style-type: none // Remove default list bullets
+  padding-left: 0 // Remove default padding
+
+  li
+    display: flex // Align items in a row
+    align-items: center // Vertically center items in the row
+    margin-bottom: 8px // Add some space between list items
+
+    span // Container for icon and name
+      display: flex
+      align-items: center
+      flex-grow: 1 // Allow this span to take available space
+
+    span + span // The span containing the button
+      margin-left: 10px // Keep existing margin logic if it was intentional for the button container
+
+// General button styling adjustments if needed (e.g., for top-level buttons)
+button[mat-stroked-button]
+  margin-right: 8px // Add some margin between top-level buttons
+  margin-bottom: 10px // Add some margin below top-level buttons

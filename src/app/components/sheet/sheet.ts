@@ -1,15 +1,13 @@
 import { Component, HostListener, inject, ChangeDetectorRef, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { Subscription } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
-import { CommonModule } from '@angular/common'; // For *ngFor, *ngIf, etc.
+import { CommonModule } from '@angular/common';
 import { SnippetText } from '../snippet-text/snippet-text';
 import { SnippetCompute } from '../snippet-compute/snippet-compute';
 import { RunnerService } from '../../services/runner.service';
 import { MenuItem } from '../side-menu/menu-item';
-import { FileManagerComponent } from '../file-manager/file-manager.component';
 
 export interface Snippet {
   id: number;
@@ -21,7 +19,7 @@ export interface Snippet {
 
 @Component({
   selector: 'app-sheet',
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, SnippetText, SnippetCompute, DragDropModule, FileManagerComponent],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, SnippetText, SnippetCompute, DragDropModule],
   standalone: true,
   templateUrl: './sheet.html',
   styleUrl: './sheet.sass'

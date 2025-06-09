@@ -1,0 +1,40 @@
+<div>
+  <h4>File Explorer</h4>
+
+  <div>
+    <strong>Current Path:</strong> {{ currentListingPath }}
+  </div>
+
+  <button (click)="listCurrentDirectory('./')">Refresh Root</button>
+  <button (click)="goToParentDirectory()" [disabled]="currentListingPath === './' || currentListingPath === '/'">Go Up</button>
+
+  @if (listedFiles && listedFiles.length > 0) {
+    <ul>
+      @for (item of listedFiles; track item.name) {
+        <li>
+          <span>
+            @if (item.isDirectory) {
+              <span>[D]</span>
+            } @else {
+              <span>[F]</span>
+            }
+            {{ item.name }}
+          </span>
+          <span style="margin-left: 10px;">
+            @if (item.isDirectory) {
+              <button (click)="listCurrentDirectory(currentListingPath.endsWith('/') ? (currentListingPath + item.name + '/') : (currentListingPath + '/' + item.name + '/'))">Enter</button>
+            } @else {
+              <button (click)="downloadSelectedFile(item.name)">Download</button>
+            }
+          </span>
+        </li>
+      }
+    </ul>
+  } @else {
+    @if (currentListingPath) {
+      <p>No files or directories found in {{ currentListingPath }}.</p>
+    } @else {
+      <p>Click 'Refresh Root' to list files.</p>
+    }
+  }
+</div>

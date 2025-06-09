@@ -3,7 +3,6 @@ const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const Docker = require('dockerode');
 const http = require('http');
-const tar = require('tar-stream');
 const path = require('path');
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -292,124 +291,6 @@ async function cleanupInactiveRunners() {
   }
   console.log('Cleanup of inactive runners finished.');
 }
-
-app.get('/api/runner/download/:sessionId/:encodedFilePath', async (req, res, next) => {
-  const { sessionId, encodedFilePath } = req.params;
-  let runnerInfo;
-
-  if (REUSE_RUNNER_MODE) {
-    if (singletonRunnerInstance && singletonRunnerInstance.sessionId === sessionId) {
-      runnerInfo = singletonRunnerInstance;
-    }
-  } else {
-    runnerInfo = activeRunners.get(sessionId);
-  }
-
-  if (!runnerInfo || !runnerInfo.container) {
-    return res.status(404).json({ error: 'RUNNER_NOT_FOUND', message: 'Runner session not found or container unavailable.' });
-  }
-  const container = runnerInfo.container;
-
-  let filePathDecoded;
-  try {
-    filePathDecoded = Buffer.from(encodedFilePath, 'base64').toString('utf-8');
-  } catch (e) {
-    return res.status(400).json({ error: 'INVALID_PATH_ENCODING', message: 'File path is not correctly Base64 encoded.' });
-  }
-
-  // The runner is responsible for ensuring the path is safe and within its designated temp directory.
-  // The path received here is expected to be an absolute path within the container's filesystem,
-  // as resolved by the runner.
-  // Basic validation to prevent ".." or absolute paths starting with "/" if they are not expected by the runner.
-  // However, runner paths *are* absolute (e.g. /tmp/...). The primary security is at the runner.
-  // This check is more of a sanity check for the format of `filePathDecoded`.
-  if (filePathDecoded.includes('..')) {
-    // Allowing absolute paths as runner provides them, but '..' is still suspicious.
-    return res.status(400).json({ error: 'INVALID_FILE_PATH', message: 'Invalid file path format (contains "..").' });
-  }
-
-  const absolutePathInContainer = filePathDecoded;
-
-  try {
-    const fileStat = await container.statPath({ path: absolutePathInContainer });
-
-    // Check if it's a regular file. Mode check: (mode & S_IFMT) == S_IFREG
-    // S_IFMT is 0o170000 (mask for file type)
-    // S_IFREG is 0o100000 (regular file)
-    if (!((fileStat.mode & 0o170000) === 0o100000)) {
-      return res.status(400).json({ error: 'PATH_IS_NOT_A_FILE', message: 'The requested path does not point to a file.' });
-    }
-
-    const stream = await container.getArchive({ path: absolutePathInContainer });
-    const extract = tar.extract();
-    let fileFoundInTar = false;
-
-    extract.on('entry', (header, entryStream, nextEntry) => {
-      // The tar archive for a single file might contain the file directly
-      // or within a directory structure based on the path given to getArchive.
-      // We are interested in the exact file.
-      // path.basename(absolutePathInContainer) ensures we match the actual file name.
-      if (header.type === 'file' && header.name === path.basename(absolutePathInContainer)) {
-        fileFoundInTar = true;
-        res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(absolutePathInContainer)}"`);
-        entryStream.pipe(res);
-        entryStream.on('end', () => {
-          nextEntry(); // Ensure tar processing continues if other entries exist (though unlikely for single file)
-        });
-        entryStream.on('error', (pipeErr) => { // Handle errors during piping to response
-          console.error('Error piping entryStream to response:', pipeErr);
-          if (!res.headersSent) {
-            // Don't try to send another response if headers are already sent
-            res.status(500).json({ error: 'STREAMING_ERROR', message: 'Error streaming file to client.' });
-          }
-          // Ensure the stream is consumed to allow 'finish' to be emitted by 'extract'
-          entryStream.resume();
-        });
-      } else {
-        entryStream.resume(); // Consume data for other entries
-        nextEntry();
-      }
-    });
-
-    extract.on('finish', () => {
-      if (!fileFoundInTar && !res.headersSent) {
-        res.status(404).json({ error: 'FILE_NOT_FOUND_IN_ARCHIVE', message: 'File not found in archive, or archive was empty.' });
-      }
-      // 'res' should be ended by entryStream.pipe(res) or an error handler
-    });
-
-    extract.on('error', (tarErr) => {
-      console.error('Tar extraction error:', tarErr);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'TAR_EXTRACTION_ERROR', message: 'Failed to extract file from archive.' });
-      }
-    });
-
-    stream.pipe(extract);
-
-    stream.on('error', (archiveErr) => {
-      console.error('Docker getArchive stream error:', archiveErr);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'DOCKER_ARCHIVE_ERROR', message: 'Failed to get archive stream from Docker.' });
-      }
-    });
-
-  } catch (err) {
-    if (err.statusCode === 404) { // Error from container.statPath or container.getArchive
-      return res.status(404).json({ error: 'FILE_NOT_FOUND_IN_CONTAINER', message: 'File not found in container at the specified path.' });
-    }
-    console.error(`Error in download endpoint (sessionId: ${sessionId}, path: ${filePathDecoded}):`, err);
-    // Fallback to generic error handler if not a specific known error like 404
-    if (!res.headersSent) {
-       return next(err);
-    } else {
-        // If headers already sent, we can't send a JSON error response.
-        // Log the error. The connection might be prematurely closed by the client or an error in streaming.
-        console.error('Error after headers sent in download endpoint. Client connection might have issues.');
-    }
-  }
-});
 
 app.use((err, req, res, next) => {
   const clientError = {

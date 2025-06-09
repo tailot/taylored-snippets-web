@@ -11,6 +11,11 @@ export interface SnippetOutput {
   error?: string;
 }
 
+export interface FileContent {
+  path: string;
+  content: ArrayBuffer;
+}
+
 /**
  * RunnerService is an Angular service provided at the root level, responsible for managing
  * the lifecycle and communication with a dedicated `runner.js` instance.
@@ -36,6 +41,9 @@ export class RunnerService implements OnDestroy {
 
   private directoryListingSubject = new Subject<{ path: string, files: any[] }>();
   public directoryListing$: Observable<{ path: string, files: any[] }> = this.directoryListingSubject.asObservable();
+
+  private fileContentSubject = new Subject<FileContent>();
+  public fileContent$: Observable<FileContent> = this.fileContentSubject.asObservable();
 
   private isRunnerReadySubject = new BehaviorSubject<boolean>(false);
   public isRunnerReady$: Observable<boolean> = this.isRunnerReadySubject.asObservable();
@@ -285,6 +293,7 @@ export class RunnerService implements OnDestroy {
     this.runnerSocket.off('tayloredError');
     this.runnerSocket.off('tayloredRunError');
     this.runnerSocket.off('directoryListing'); // Prevent duplicate listeners
+    this.runnerSocket.off('fileContent');
 
     this.runnerSocket.on('directoryListing', (data: { path: string, files: any[] }) => {
       if (data && Array.isArray(data.files)) {
@@ -292,6 +301,10 @@ export class RunnerService implements OnDestroy {
       } else {
         console.error('Received malformed directoryListing data:', data);
       }
+    });
+
+    this.runnerSocket.on('fileContent', (data: FileContent) => {
+      this.fileContentSubject.next(data);
     });
 
     this.runnerSocket.on('tayloredOutput', (data: SnippetOutput) => {
@@ -413,25 +426,12 @@ export class RunnerService implements OnDestroy {
     this.sendMessage('listDirectory', { path: requestedPath });
   }
 
-  public downloadFile(sessionId: string, filePath: string): Observable<Blob> {
-    if (!sessionId) {
-      console.error('Session ID is required to download a file.');
-      return throwError(() => new Error('Session ID is required.'));
+  public requestFileDownload(filePath: string): void {
+    if (!this.runnerSocket || !this.runnerSocket.connected) {
+      console.error('Runner socket not connected. Cannot request file download.');
+      return;
     }
-    try {
-      const encodedFilePath = btoa(filePath); // Base64 encode the file path
-      const downloadUrl = `${this.orchestratorUrl}/api/runner/download/${sessionId}/${encodedFilePath}`;
-
-      return this.http.get(downloadUrl, { responseType: 'blob' }).pipe(
-        catchError(err => {
-          console.error(`Error downloading file ${filePath}:`, err);
-          return throwError(() => new Error(`Failed to download file: ${err.message || 'Server error'}`));
-        })
-      );
-    } catch (e) {
-      console.error('Error encoding file path:', e);
-      return throwError(() => new Error('Failed to encode file path.'));
-    }
+    this.sendMessage('downloadFile', { path: filePath });
   }
 
   public getCurrentSessionId(): string | null {

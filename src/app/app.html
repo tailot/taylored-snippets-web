@@ -9,6 +9,11 @@
 </mat-toolbar>
 
 <mat-sidenav-container class="app-sidenav-container">
+  
+  <mat-sidenav #fileManagerSidenav mode="side" opened position="start">
+    <app-file-manager></app-file-manager>
+  </mat-sidenav>
+
   <mat-sidenav #sidenav mode="over" position="end">
     <app-side-menu [menuItems]="sideMenuItems" (snippetsSelected)="onSnippetsSelected($event)"></app-side-menu>
   </mat-sidenav>

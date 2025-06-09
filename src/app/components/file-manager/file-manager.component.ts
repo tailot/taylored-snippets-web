@@ -1,19 +1,21 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
+import { MatIconModule } from '@angular/material/icon'; // Added
 import { RunnerService, FileContent } from '../../services/runner.service';
 
 @Component({
   selector: 'app-file-manager',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule], // Added MatIconModule
   templateUrl: './file-manager.component.html',
-  styleUrls: ['./file-manager.component.css']
+  styleUrls: ['./file-manager.component.sass']
 })
 export class FileManagerComponent implements OnInit, OnDestroy {
   public listedFiles: any[] = [];
   public currentListingPath: string = './';
   private directoryListingSubscription: Subscription | undefined;
+  private runnerReadySubscription: Subscription | undefined;
   private fileContentSubscription: Subscription | undefined;
 
   private runnerService = inject(RunnerService);
@@ -36,7 +38,19 @@ export class FileManagerComponent implements OnInit, OnDestroy {
       this.triggerBrowserDownload(fileData.path, fileData.content);
     });
 
-    this.listCurrentDirectory('./'); // Automatically list root directory on init
+    this.runnerReadySubscription = this.runnerService.isRunnerReady$.subscribe(isReady => {
+      if (isReady) {
+        // When the runner is ready, list the directory stored in currentListingPath.
+        // currentListingPath is initialized to './', so it will load the root on first readiness.
+        console.log(`File Manager: Runner is ready. Listing directory: ${this.currentListingPath}`);
+        this.listCurrentDirectory(this.currentListingPath);
+      } else {
+        console.log('File Manager: Runner is not ready. Clearing file list.');
+        this.listedFiles = []; // Clear files if runner becomes not ready
+        this.cdr.detectChanges();
+      }
+    });
+    // The initial call to listCurrentDirectory is now handled by the isRunnerReady$ subscription
   }
 
   public listCurrentDirectory(path: string = './'): void {
@@ -109,6 +123,9 @@ export class FileManagerComponent implements OnInit, OnDestroy {
     }
     if (this.fileContentSubscription) {
       this.fileContentSubscription.unsubscribe();
+    }
+    if (this.runnerReadySubscription) {
+      this.runnerReadySubscription.unsubscribe();
     }
   }
 }

@@ -1,12 +1,14 @@
 import { Component, ViewChild, OnInit } from '@angular/core';
-import { Sheet, Snippet } from './components/sheet/sheet'; // Snippet import corretto
-import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
-import { RunnerService } from './services/runner.service';
-import { MatListModule } from '@angular/material/list';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatIconModule } from '@angular/material/icon';
-import { SideMenuComponent } from './components/side-menu/side-menu';
 import { CommonModule } from '@angular/common';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
+import { MatToolbarModule } from '@angular/material/toolbar';
+
+import { Sheet, Snippet } from './components/sheet/sheet'; // Snippet import corretto
+import { RunnerService } from './services/runner.service';
+import { SideMenuComponent } from './components/side-menu/side-menu';
+import { FileManagerComponent } from './components/file-manager/file-manager.component';
 import { MenuItem } from './components/side-menu/menu-item';
 
 @Component({
@@ -19,7 +21,8 @@ import { MenuItem } from './components/side-menu/menu-item';
     MatToolbarModule,
     MatIconModule,
     SideMenuComponent,
-    CommonModule
+    CommonModule,
+    FileManagerComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.sass'

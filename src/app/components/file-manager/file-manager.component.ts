@@ -1,9 +1,17 @@
+/**
+ * @fileoverview This file defines the FileManagerComponent, which allows users to browse and download files
+ * from the runner's file system.
+ */
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon'; // Added
 import { RunnerService, FileContent } from '../../services/runner.service';
 
+/**
+ * Component for managing files and directories in the runner environment.
+ * It allows listing directories, navigating through them, and downloading files.
+ */
 @Component({
   selector: 'app-file-manager',
   standalone: true,
@@ -12,15 +20,34 @@ import { RunnerService, FileContent } from '../../services/runner.service';
   styleUrls: ['./file-manager.component.sass']
 })
 export class FileManagerComponent implements OnInit, OnDestroy {
+  /**
+   * An array of files and directories currently listed.
+   */
   public listedFiles: any[] = [];
+  /**
+   * The path of the currently listed directory.
+   */
   public currentListingPath: string = './';
+  /**
+   * Subscription to the directory listing observable from RunnerService.
+   */
   private directoryListingSubscription: Subscription | undefined;
+  /**
+   * Subscription to the runner readiness observable from RunnerService.
+   */
   private runnerReadySubscription: Subscription | undefined;
+  /**
+   * Subscription to the file content observable from RunnerService, used for downloads.
+   */
   private fileContentSubscription: Subscription | undefined;
 
   private runnerService = inject(RunnerService);
   private cdr = inject(ChangeDetectorRef);
 
+  /**
+   * Initializes the component, subscribing to runner events for directory listings and readiness.
+   * It lists the root directory ('./') once the runner is ready.
+   */
   ngOnInit(): void {
     this.directoryListingSubscription = this.runnerService.directoryListing$.subscribe(listing => {
       if (listing && Array.isArray(listing.files)) {
@@ -53,10 +80,18 @@ export class FileManagerComponent implements OnInit, OnDestroy {
     // The initial call to listCurrentDirectory is now handled by the isRunnerReady$ subscription
   }
 
+  /**
+   * Requests the RunnerService to list the contents of the specified directory path.
+   * @param path The directory path to list. Defaults to './' (root).
+   */
   public listCurrentDirectory(path: string = './'): void {
     this.runnerService.listRunnerDirectory(path);
   }
 
+  /**
+   * Constructs the full path for a given filename and requests its download via RunnerService.
+   * @param filename The name of the file to download.
+   */
   public downloadSelectedFile(filename: string): void {
     let fullPath = '';
     if (this.currentListingPath === './' || this.currentListingPath === '.' ) {
@@ -74,6 +109,11 @@ export class FileManagerComponent implements OnInit, OnDestroy {
     this.runnerService.requestFileDownload(fullPath);
   }
 
+  /**
+   * Triggers a browser download for the given file content.
+   * @param filePath The path of the file being downloaded (used to extract filename).
+   * @param content The file content as an ArrayBuffer.
+   */
   private triggerBrowserDownload(filePath: string, content: ArrayBuffer): void {
     try {
       const filename = filePath.split('/').pop() || filePath;
@@ -93,6 +133,10 @@ export class FileManagerComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Constructs the path of the parent directory relative to the current path.
+   * @returns The path of the parent directory, or './' if already at the root.
+   */
   public constructParentPath(): string {
     if (this.currentListingPath === './' || this.currentListingPath === '/' || this.currentListingPath === '') {
       return './'; // Already at root or an invalid state to go up further sensibly
@@ -112,11 +156,17 @@ export class FileManagerComponent implements OnInit, OnDestroy {
     return parentPath === '' ? './' : parentPath + '/'; // Ensure trailing slash for directories
   }
 
+  /**
+   * Navigates to the parent directory of the current path and lists its contents.
+   */
   public goToParentDirectory(): void {
     const parentPath = this.constructParentPath();
     this.listCurrentDirectory(parentPath);
   }
 
+  /**
+   * Cleans up subscriptions when the component is destroyed.
+   */
   ngOnDestroy(): void {
     if (this.directoryListingSubscription) {
       this.directoryListingSubscription.unsubscribe();

@@ -1,3 +1,13 @@
+/**
+ * @file orchestrator.js
+ * @description This module is an Express application that acts as an orchestrator for managing
+ * Docker-based runner instances. It handles provisioning new runners, deprovisioning them,
+ * tracking their activity via heartbeats, and cleaning up inactive runners.
+ * Runners are isolated environments where code snippets can be executed.
+ * The orchestrator communicates with Docker to start and stop runner containers.
+ * It supports a standard mode where each session gets a new runner, and a REUSE_RUNNER_MODE
+ * where a single runner instance is reused.
+ */
 const express = require('express');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
@@ -7,21 +17,60 @@ const path = require('path');
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
+/**
+ * @const {number} INACTIVITY_TIMEOUT_SECONDS
+ * @description The time in seconds after which an inactive runner will be cleaned up.
+ * Defaults to 60 seconds if not set via environment variable `INACTIVITY_TIMEOUT_SECONDS`.
+ */
 const INACTIVITY_TIMEOUT_SECONDS = parseInt(process.env.INACTIVITY_TIMEOUT_SECONDS, 10) || 60; // Default to 5 minutes if not set
+/**
+ * @const {number} CLEANUP_INTERVAL_SECONDS
+ * @description The interval in seconds at which the orchestrator checks for and cleans up inactive runners.
+ * Defaults to 30 seconds.
+ */
 const CLEANUP_INTERVAL_SECONDS = 30;
 
 const app = express();
 const port = 3001;
 
+/**
+ * @const {boolean} REUSE_RUNNER_MODE
+ * @description If true, the orchestrator will attempt to reuse a single runner instance
+ * for all sessions, instead of provisioning a new one for each.
+ * Controlled by the `REUSE_RUNNER_MODE` environment variable.
+ */
 const REUSE_RUNNER_MODE = process.env.REUSE_RUNNER_MODE === 'true';
+/**
+ * @const {string} RUNNERS_HOST
+ * @description The hostname or IP address that clients should use to connect to the runners.
+ * Defaults to 'localhost'. Controlled by the `RUNNERS_HOST` environment variable.
+ */
 const RUNNERS_HOST = process.env.RUNNERS_HOST || 'localhost';
+/**
+ * @type {Object|null}
+ * @description Stores the details of the singleton runner instance if `REUSE_RUNNER_MODE` is true.
+ * Contains properties like `containerId`, `port`, `container` (Dockerode object), `sessionId`, `lastActivityTime`.
+ */
 let singletonRunnerInstance = null;
 
 app.use(cors());
 app.use(express.json());
 
+/**
+ * @type {Map<string, Object>}
+ * @description A map storing active runner instances, keyed by session ID.
+ * Each value is an object containing details about the runner:
+ * `containerId`, `port`, `container` (Dockerode object), `sessionId`, `lastActivityTime`.
+ * This is not used if `REUSE_RUNNER_MODE` is true.
+ */
 const activeRunners = new Map();
 
+/**
+ * Finds an available port on the host machine by temporarily starting a server.
+ * @async
+ * @returns {Promise<number>} A promise that resolves with an available port number.
+ * @throws {Error} If an error occurs while trying to find a port.
+ */
 function getAvailablePort() {
   return new Promise((resolve, reject) => {
     const server = http.createServer();
@@ -37,10 +86,36 @@ function getAvailablePort() {
   });
 }
 
+/**
+ * @route GET /
+ * @description Basic health check endpoint.
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ */
 app.get('/', (req, res) => {
   res.send('Orchestrator service is running!');
 });
 
+/**
+ * @route POST /api/runner/provision
+ * @description Provisions a new runner instance or returns an existing one based on session ID or reuse mode.
+ * It creates a new Docker container for the runner.
+ * Request headers:
+ *  - 'x-session-id' (optional): Client-provided session ID. If not provided, a new UUID is generated.
+ * Request body (JSON):
+ *  - 'networkMode' (optional): Specifies the Docker network mode for the container (e.g., 'none', 'bridge').
+ * Responses:
+ *  - 201 Created: If a new runner is provisioned.
+ *    Body: { message: string, endpoint: string, sessionId: string }
+ *    'endpoint' is the host:port for the runner, or 'N/A (isolated network mode)' if networkMode is 'none'.
+ *  - 200 OK: If an existing runner is reused (for the same session or in REUSE_RUNNER_MODE).
+ *    Body: { message: string, endpoint: string, sessionId: string }
+ *  - 500 Internal Server Error: If provisioning fails (e.g., Docker image not found, port allocation error).
+ *    Body: { error: string, message: string, details?: string }
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ * @param {express.NextFunction} next - The Express next middleware function.
+ */
 app.post('/api/runner/provision', async (req, res, next) => {
   if (REUSE_RUNNER_MODE) {
     if (singletonRunnerInstance) {
@@ -160,6 +235,22 @@ app.post('/api/runner/provision', async (req, res, next) => {
   }
 });
 
+/**
+ * @route POST /api/runner/heartbeat
+ * @description Receives a heartbeat from a runner instance, updating its last activity time.
+ * This prevents active runners from being cleaned up by the inactivity monitor.
+ * Request body (JSON) or Headers:
+ *  - 'sessionId' (in body) or 'x-session-id' (in header): The session ID of the runner sending the heartbeat.
+ * Responses:
+ *  - 200 OK: If heartbeat is successfully processed.
+ *    Body: { message: string }
+ *  - 400 Bad Request: If session ID is missing.
+ *    Body: { error: 'SESSION_ID_REQUIRED', message: string }
+ *  - 404 Not Found: If no runner is found for the given session ID.
+ *    Body: { error: 'RUNNER_NOT_FOUND', message: string }
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ */
 app.post('/api/runner/heartbeat', (req, res) => {
   const sessionId = req.body.sessionId || req.headers['x-session-id'];
 
@@ -185,6 +276,24 @@ app.post('/api/runner/heartbeat', (req, res) => {
   }
 });
 
+/**
+ * @route POST /api/runner/deprovision
+ * @description Deprovisions (stops and removes) a runner instance associated with a given session ID.
+ * This endpoint is disabled if `REUSE_RUNNER_MODE` is true.
+ * Request body (JSON) or Headers:
+ *  - 'sessionId' (in body) or 'x-session-id' (in header): The session ID of the runner to deprovision.
+ * Responses:
+ *  - 200 OK: If the runner is successfully deprovisioned or if deprovisioning is disabled.
+ *    Body: { message: string }
+ *  - 400 Bad Request: If session ID is missing.
+ *    Body: { error: 'SESSION_ID_REQUIRED', message: string }
+ *  - 404 Not Found: If no runner is found for the given session ID.
+ *    Body: { error: 'RUNNER_NOT_FOUND', message: string }
+ *  - 500 Internal Server Error: If an error occurs during container stop/removal.
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ * @param {express.NextFunction} next - The Express next middleware function.
+ */
 app.post('/api/runner/deprovision', async (req, res, next) => {
   if (REUSE_RUNNER_MODE) {
       return res.status(200).json({ message: 'Deprovisioning is disabled in REUSE_RUNNER_MODE.' });
@@ -215,6 +324,14 @@ app.post('/api/runner/deprovision', async (req, res, next) => {
   }
 });
 
+/**
+ * Stops and removes a Docker container.
+ * @async
+ * @param {Docker.Container} container - The Dockerode container object to stop and remove.
+ * @param {string} sessionId - The session ID associated with the container, for logging purposes.
+ * @throws {Error} If an unexpected error occurs during inspection, stop, or removal,
+ *                 other than the container already being removed (404 on inspect).
+ */
 async function stopAndRemoveContainer(container, sessionId) {
   if (!container) {
     console.log(`[Session: ${sessionId}] No container object provided for cleanup.`);
@@ -253,6 +370,13 @@ async function stopAndRemoveContainer(container, sessionId) {
   }
 }
 
+/**
+ * Periodically cleans up inactive runner instances.
+ * Iterates through `activeRunners` (or checks `singletonRunnerInstance`) and removes any runner
+ * whose `lastActivityTime` exceeds `INACTIVITY_TIMEOUT_SECONDS`.
+ * This function is intended to be called at intervals by `setInterval`.
+ * @async
+ */
 async function cleanupInactiveRunners() {
   console.log('Starting cleanup of inactive runners...');
   const now = Date.now();
@@ -292,6 +416,15 @@ async function cleanupInactiveRunners() {
   console.log('Cleanup of inactive runners finished.');
 }
 
+/**
+ * Generic error handling middleware for Express.
+ * Logs the error and sends a JSON response to the client.
+ * In non-production environments, may include error details in the response.
+ * @param {Error} err - The error object.
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ * @param {express.NextFunction} next - The Express next middleware function.
+ */
 app.use((err, req, res, next) => {
   const clientError = {
     error: 'SERVER_ERROR',
@@ -304,14 +437,16 @@ app.use((err, req, res, next) => {
   res.status(err.statusCode || 500).json(clientError);
 });
 
-
+// Start the Express server
 app.listen(port, () => {
-  // Startup message can be kept if desired, or removed. For now, I'll remove it to be consistent.
   console.log(`Orchestrator listening on port ${port}`);
   console.log(`Using INACTIVITY_TIMEOUT_SECONDS: ${INACTIVITY_TIMEOUT_SECONDS}s`);
   console.log(`Orchestrator will cleanup inactive runners every ${CLEANUP_INTERVAL_SECONDS} seconds.`);
+  console.log(`REUSE_RUNNER_MODE is ${REUSE_RUNNER_MODE ? 'enabled' : 'disabled'}.`);
+  console.log(`RUNNERS_HOST is set to '${RUNNERS_HOST}'.`);
 });
 
+// Set up a recurring task to clean up inactive runners.
 setInterval(cleanupInactiveRunners, CLEANUP_INTERVAL_SECONDS * 1000);
 
 module.exports = app;

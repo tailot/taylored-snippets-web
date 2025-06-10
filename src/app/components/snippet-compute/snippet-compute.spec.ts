@@ -218,16 +218,17 @@ describe('SnippetComputeComponent', () => {
       // fixture.detectChanges(); // Not strictly necessary for method testing unless it reads from DOM
     });
 
-    it('should return an XMLDocument', () => {
+    it('should return a string', () => {
       const result = component.getTayloredBlock();
-      expect(result).toBeInstanceOf(XMLDocument);
+      expect(typeof result).toBe('string');
     });
 
-    it('should return an XMLDocument with the correct structure and content using value', () => {
+    it('should return an XML string with the correct structure and content using value', () => {
       const result = component.getTayloredBlock();
-      expect(result).toBeInstanceOf(XMLDocument);
+      expect(typeof result).toBe('string');
+      const doc = new DOMParser().parseFromString(result, "text/xml");
 
-      const rootElement = result.documentElement;
+      const rootElement = doc.documentElement;
       expect(rootElement.tagName).toBe('taylored');
       expect(rootElement.getAttribute('number')).toBe(component.id.toString());
       expect(rootElement.textContent).toBe(`\n${component.value}\n`); // Check component.value
@@ -238,23 +239,26 @@ describe('SnippetComputeComponent', () => {
       expect(/^[A-Za-z0-9+/=]+$/.test(computeAttr!)).toBeTrue();
     });
 
-    it('should use the component id in the "number" attribute of the XMLDocument', () => {
+    it('should use the component id in the "number" attribute of the XML string', () => {
       component.id = 456; // Change id to test
       const result = component.getTayloredBlock();
-      const rootElement = result.documentElement;
+      const doc = new DOMParser().parseFromString(result, "text/xml");
+      const rootElement = doc.documentElement;
       expect(rootElement.getAttribute('number')).toBe('456');
     });
 
-    it('should use the component value as the text content of the XMLDocument', () => {
+    it('should use the component value as the text content of the XML string', () => {
       component.value = 'alert("Test Code");'; // Change value to test
       const result = component.getTayloredBlock();
-      const rootElement = result.documentElement;
+      const doc = new DOMParser().parseFromString(result, "text/xml");
+      const rootElement = doc.documentElement;
       expect(rootElement.textContent).toBe('\nalert("Test Code");\n');
     });
 
-    it('should have a valid Base64 encoded timestamp in the "compute" attribute of the XMLDocument', () => {
+    it('should have a valid Base64 encoded timestamp in the "compute" attribute of the XML string', () => {
       const result = component.getTayloredBlock();
-      const rootElement = result.documentElement;
+      const doc = new DOMParser().parseFromString(result, "text/xml");
+      const rootElement = doc.documentElement;
       const base64Timestamp = rootElement.getAttribute('compute');
 
       expect(base64Timestamp).toBeTruthy();

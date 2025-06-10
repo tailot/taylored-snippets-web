@@ -69,39 +69,43 @@ describe('SnippetTextComponent', () => {
       // fixture.detectChanges(); // Not strictly necessary for method testing
     });
 
-    it('should return an XMLDocument', () => {
+    it('should return a string', () => {
       const result = component.getTayloredBlock();
-      expect(result).toBeInstanceOf(XMLDocument);
+      expect(typeof result).toBe('string');
     });
 
-    it('should return an XMLDocument with the correct structure and content using value', () => {
+    it('should return an XML string with the correct structure and content using value', () => {
       const result = component.getTayloredBlock();
-      expect(result).toBeInstanceOf(XMLDocument);
+      expect(typeof result).toBe('string');
+      const doc = new DOMParser().parseFromString(result, "text/xml");
 
-      const rootElement = result.documentElement;
+      const rootElement = doc.documentElement;
       expect(rootElement.tagName).toBe('taylored');
       expect(rootElement.getAttribute('number')).toBe(component.id.toString());
       expect(rootElement.getAttribute('text')).toBe('true'); // This attribute distinguishes text snippets in XML
       expect(rootElement.textContent).toBe(component.value); // Check component.value
     });
 
-    it('should use the component id in the "number" attribute of the XMLDocument', () => {
+    it('should use the component id in the "number" attribute of the XML string', () => {
       component.id = 101; // Change id to test
       const result = component.getTayloredBlock();
-      const rootElement = result.documentElement;
+      const doc = new DOMParser().parseFromString(result, "text/xml");
+      const rootElement = doc.documentElement;
       expect(rootElement.getAttribute('number')).toBe('101');
     });
 
-    it('should use the component value as the text content of the XMLDocument', () => {
+    it('should use the component value as the text content of the XML string', () => {
       component.value = 'More detailed text for testing purposes.'; // Change value to test
       const result = component.getTayloredBlock();
-      const rootElement = result.documentElement;
+      const doc = new DOMParser().parseFromString(result, "text/xml");
+      const rootElement = doc.documentElement;
       expect(rootElement.textContent).toBe('More detailed text for testing purposes.');
     });
 
-    it('should have a "text" attribute with the value "true"', () => {
+    it('should have a "text" attribute with the value "true" in the XML string', () => {
       const result = component.getTayloredBlock();
-      const rootElement = result.documentElement;
+      const doc = new DOMParser().parseFromString(result, "text/xml");
+      const rootElement = doc.documentElement;
       expect(rootElement.getAttribute('text')).toBe('true');
     });
   });

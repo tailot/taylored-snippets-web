@@ -318,10 +318,7 @@ describe('SheetComponent', () => {
       mockSnippetComputeInstance.value = '#!/bin/bash\necho "Test"';
       mockSnippetComputeInstance.type = 'compute';
       // Explicitly define getTayloredBlock for the mock instance if it's part of the Snippet interface
-      mockSnippetComputeInstance.getTayloredBlock = () => {
-          const doc = new DOMParser().parseFromString('<taylored compute="true"></taylored>', "text/xml");
-          return doc;
-      };
+      mockSnippetComputeInstance.getTayloredBlock = () => '<taylored compute="true"></taylored>';
     });
 
     it('should correctly process finishedProcessing, create MenuItem, and emit newMenuItem', () => {
@@ -330,7 +327,7 @@ describe('SheetComponent', () => {
       // Setup initial snippets in the sheet
       const textSnippet: Snippet = {
         id: 1, type: 'text', value: 'Hello',
-        getTayloredBlock: () => new DOMParser().parseFromString('<taylored text="true"></taylored>', "text/xml")
+        getTayloredBlock: () => '<taylored text="true"></taylored>'
       };
       component.snippets = [textSnippet, mockSnippetComputeInstance];
       const expectedSnippetsInMenuItem = [...component.snippets]; // Capture the state

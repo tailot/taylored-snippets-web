@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: MIT
-// Copyright (c) 2025 tailot@gmail.com
 
 const http = require('http');
 const { Server } = require("socket.io");
@@ -18,38 +16,29 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3000;
 
-// --- MODIFICA INIZIO ---
-// Definisce la directory principale per le operazioni sui file.
-// In questo modo il file manager non dipende più da una directory temporanea.
 const CONTAINER_ROOT = '/';
-// --- MODIFICA FINE ---
 
 io.on('connection', (socket) => {
   socket.on('disconnect', () => {
   });
 
-  // La logica di 'tayloredRun' rimane invariata, continua a usare una directory temporanea
-  // per l'esecuzione isolata degli snippet.
   socket.on('tayloredRun', async (xmlDataRequest) => {
     const xmlData = xmlDataRequest.body;
-    
+
     if (typeof xmlData !== 'string' || xmlData.trim() === '') {
       return socket.emit('tayloredRunError', { error: 'Invalid XML data: must be a non-empty string.' });
     }
 
     const blockRegex = /[^\n]*?<taylored\s+number=["'](\d+)["'](?:\s+compute=["']([^"']*)["'])?>([\s\S]*?)[^\n]*?<\/taylored>/g;
     const matches = [...xmlData.matchAll(blockRegex)];
-
     let numberValue = null;
     if (matches.length > 0) {
       numberValue = matches[0][1];
     } else {
       return socket.emit('tayloredRunError', { error: 'Could not extract snippet ID (number) from XML data.' });
     }
-
     let tempDir;
     try {
-      // Questa directory temporanea è usata solo per l'esecuzione di taylored.
       tempDir = tmp.dirSync({ unsafeCleanup: true });
       const tempDirPath = tempDir.name;
       
@@ -57,12 +46,12 @@ io.on('connection', (socket) => {
       await git.init(['--initial-branch=main']);
       await git.addConfig('user.name', 'Taylored Runner');
       await git.addConfig('user.email', 'bot@taylored.run');
-      
+
       const xmlFilePath = path.join(tempDirPath, 'runner.xml');
       await fs.writeFile(xmlFilePath, xmlData);
       await git.add(xmlFilePath);
       await git.commit('Add runner.xml');
-      
+
       const tayloredProcess = spawn('npx', ['taylored', '--automatic', 'xml', 'main'], { cwd: tempDirPath });
 
       tayloredProcess.stdout.on('data', (data) => {
@@ -85,35 +74,27 @@ io.on('connection', (socket) => {
     } catch (err) {
       socket.emit('tayloredRunError', { id: numberValue ? parseInt(numberValue, 10) : null, error: `Server-side error: ${err.message}` });
     } finally {
-      // La pulizia di tempDir è gestita da tmp.dirSync con unsafeCleanup: true
     }
   });
 
-  // --- MODIFICA INIZIO ---
-  // Logica aggiornata per elencare le directory partendo dalla root del container.
   socket.on('listDirectory', async (requestData) => {
     const requestedPath = requestData && requestData.path ? requestData.path : CONTAINER_ROOT;
-    
-    // Risolve il percorso richiesto in modo sicuro partendo dalla root.
+
     const targetPath = path.resolve(CONTAINER_ROOT, requestedPath);
 
-    // Controllo di sicurezza per evitare di uscire dalla directory root.
     if (!targetPath.startsWith(CONTAINER_ROOT)) {
       return socket.emit('tayloredRunError', { error: 'Access denied: Path is outside the allowed directory.' });
     }
-
     try {
       const entries = await fs.readdir(targetPath, { withFileTypes: true });
       const files = entries.map(entry => ({ name: entry.name, isDirectory: entry.isDirectory() }));
-      
-      // Ritorna il percorso che è stato effettivamente listato per coerenza.
+
       socket.emit('directoryListing', { path: targetPath, files: files });
     } catch (error) {
       socket.emit('tayloredRunError', { error: `Error listing directory ${requestedPath}: ${error.message}` });
     }
   });
 
-  // Logica aggiornata per scaricare file partendo dalla root del container.
   socket.on('downloadFile', async (requestData) => {
     const requestedPath = requestData && requestData.path ? requestData.path : null;
 
@@ -123,7 +104,6 @@ io.on('connection', (socket) => {
 
     const filePath = path.resolve(CONTAINER_ROOT, requestedPath);
 
-    // Controllo di sicurezza.
     if (!filePath.startsWith(CONTAINER_ROOT)) {
       return socket.emit('tayloredRunError', { error: 'Access denied: Path is outside the allowed directory.' });
     }
@@ -141,7 +121,6 @@ io.on('connection', (socket) => {
       socket.emit('tayloredRunError', { error: `Error downloading file ${requestedPath}: ${error.message}` });
     }
   });
-  // --- MODIFICA FINE ---
 });
 
 httpServer.listen(PORT, () => {

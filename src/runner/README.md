@@ -53,22 +53,35 @@ The server listens for and emits the following Socket.IO events:
 ### Client Emits
 
 *   **`tayloredRun`**:
-    *   **Payload**: `String` - A valid XML string that `taylored` can process.
-    *   **Description**: Sends an XML string to the server for processing with `taylored --automatic xml`.
+    *   **Payload**: `Object` - `{ body: "<xml_string>" }`
+    *   **Description**: Sends an XML string (wrapped in a `body` property) to the server for processing with `taylored --automatic xml main`. The runner will attempt to extract a snippet ID (number) from the XML.
+*   **`listDirectory`**:
+    *   **Payload**: `Object` - `{ path: "<directory_path>" }` (Optional, defaults to container root '/')
+    *   **Description**: Requests a listing of the specified directory. Path is relative to the container's root.
+*   **`downloadFile`**:
+    *   **Payload**: `Object` - `{ path: "<file_path>" }` (Required)
+    *   **Description**: Requests the content of the specified file. Path is relative to the container's root.
+
 
 ### Server Emits
 
 *   **`tayloredOutput`**:
-    *   **Payload**: `Object` - `{ output: '...' }`
-    *   **Description**: Emitted when the `taylored` command successfully produces standard output. The `output` field contains the `stdout` string.
+    *   **Payload**: `Object` - `{ id: number, output: string }`
+    *   **Description**: Emitted when the `taylored` command successfully produces standard output. The `id` field is the snippet ID extracted from the input XML. The `output` field contains the `stdout` string.
 
 *   **`tayloredError`**:
-    *   **Payload**: `Object` - `{ error: '...' }`
-    *   **Description**: Emitted if the `taylored` command writes to `stderr`. This might include warnings or non-critical errors from `taylored`. The `error` field contains the `stderr` string.
+    *   **Payload**: `Object` - `{ id: number, error: string }`
+    *   **Description**: Emitted if the `taylored` command writes to `stderr`. This might include warnings or non-critical errors from `taylored`. The `id` field is the snippet ID. The `error` field contains the `stderr` string.
 
 *   **`tayloredRunError`**:
-    *   **Payload**: `Object` - `{ id: number | null, error: '...' }`
-    *   **Description**: Emitted if there's a general error during the processing of the `tayloredRun` event (e.g., invalid input, file system error, git error, `taylored` command execution failure). The `error` field contains a descriptive error message. The `id` field will contain the extracted snippet ID if available.
+    *   **Payload**: `Object` - `{ id: number | null, error: string }`
+    *   **Description**: Emitted if there's a general error during the processing of any event (e.g., invalid input, file system error, git error, `taylored` command execution failure, issues with `listDirectory` or `downloadFile`). The `error` field contains a descriptive error message. The `id` field will contain the extracted snippet ID if available (primarily for `tayloredRun` errors).
+*   **`directoryListing`**:
+    *   **Payload**: `Object` - `{ path: string, files: Array<{name: string, isDirectory: boolean}> }`
+    *   **Description**: Emitted in response to a `listDirectory` request. `path` is the absolute path listed within the container. `files` is an array of file/directory entries.
+*   **`fileContent`**:
+    *   **Payload**: `Object` - `{ path: string, content: Buffer }`
+    *   **Description**: Emitted in response to a `downloadFile` request. `path` is the original requested path. `content` is the raw file content as a Buffer.
 
 ## License
 

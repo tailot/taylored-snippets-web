@@ -70,6 +70,50 @@ The service exposes the following RESTful API endpoints:
         ```
     *   `500 Internal Server Error`: (Similar to provision endpoint for unexpected errors)
 
+### POST /api/runner/heartbeat
+
+*   **Description:** Receives a heartbeat from an active runner instance to indicate it's still active. This is used to prevent premature cleanup of active runners by the inactivity monitor.
+*   **Request Body (JSON):**
+    ```json
+    {
+      "sessionId": "<session_id_of_the_runner>"
+    }
+    ```
+    *Alternatively, the `sessionId` can be passed via the `X-Session-Id` header.*
+*   **Success Response (200 OK):**
+    ```json
+    {
+      "message": "Heartbeat received for session <session_id>."
+    }
+    ```
+    *Or, for the singleton runner:*
+    ```json
+    {
+      "message": "Heartbeat received for singleton runner."
+    }
+    ```
+*   **Error Responses:**
+    *   `400 Bad Request`: If `sessionId` is missing.
+        ```json
+        {
+          "error": "SESSION_ID_REQUIRED",
+          "message": "Session ID is required for heartbeat."
+        }
+        ```
+    *   `404 Not Found`: If no runner (or singleton) matches the `sessionId`.
+        ```json
+        {
+          "error": "RUNNER_NOT_FOUND",
+          "message": "No active runner found for this session ID."
+        }
+        ```
+        ```json
+        {
+          "error": "RUNNER_NOT_FOUND",
+          "message": "Singleton runner not found or session ID mismatch."
+        }
+        ```
+
 ## 3. Prerequisites
 
 *   **Docker Engine:** Must be installed and running. The orchestrator communicates with Docker via its socket (e.g., `/var/run/docker.sock`).
@@ -165,34 +209,29 @@ The testing strategies outlined below are conceptual guidelines. Actual implemen
 
 The behavior of the Orchestrator service can be configured using the following environment variables:
 
-*   **`NODE_ENV`**:
-    *   Description: Specifies the environment mode.
-    *   Values: `development`, `production`.
-    *   Default: `development`.
-    *   Effect: In `development` mode, error responses may include more detailed stack traces.
+*   **`NODE_ENV`**: (Standard Node.js variable)
+    *   Description: Specifies the environment mode (e.g., `development`, `production`).
+    *   Effect: In non-`production` modes, error responses may include more detailed stack traces.
 *   **`REUSE_RUNNER_MODE`**:
-    *   Description: Controls the runner provisioning strategy.
-    *   Values:
-        *   `true`: The orchestrator uses a single, shared runner instance for all sessions. This mode is used by the `orchestrator-singletenant` service in `docker-compose.yml`.
-        *   `false`: The orchestrator provisions a new, isolated Docker container for each user session. This mode is used by the `orchestrator-multitenant` service in `docker-compose.yml`.
-    *   Default: `false`.
+    *   Description: Controls the runner provisioning strategy. If `true`, a single runner instance is reused. If `false`, a new Docker container is provisioned per session.
+    *   Default: `false` (implicitly, if not set).
+    *   Example: `REUSE_RUNNER_MODE=true`
+*   **`RUNNERS_HOST`**:
+    *   Description: The hostname or IP address that clients will use to connect to the provisioned runners.
+    *   Default: `localhost`.
+    *   Example: `RUNNERS_HOST=runners.example.com`
 *   **`PORT`**:
-    *   Description: The port on which the Orchestrator service will listen.
+    *   Description: The port on which the Orchestrator service itself will listen.
     *   Default: `3001`.
-*   **`DOCKER_IMAGE_NAME`**:
-    *   Description: The name of the Docker image to use for provisioning runner instances.
-    *   Default: `runner-image`.
-    *   Usage: The service will attempt to pull this image if it's not available locally and will use it to create new containers. Ensure this image is accessible to the Docker daemon.
-*   **`RUNNER_CONTAINER_LABEL`**:
-    *   Description: The Docker label key used to tag containers managed by this orchestrator. Used for identifying and cleaning up containers.
-    *   Default: `taylored-runner-session-id`.
-*   **`LOG_LEVEL`**:
-    *   Description: Controls the verbosity of logging.
-    *   Values: `debug`, `info`, `warn`, `error`.
-    *   Default: `info`. `debug` is very verbose.
-*   **`DOCKER_SOCKET_PATH`**:
-    *   Description: Path to the Docker socket.
-    *   Default: `/var/run/docker.sock`.
-*   **`MAX_CONCURRENT_RUNNERS`**:
-    *   Description: Maximum number of concurrent runner containers the orchestrator will manage.
-    *   Default: `10`. (Only enforced if `REUSE_RUNNER_MODE` is `false`)
+*   **`INACTIVITY_TIMEOUT_SECONDS`**:
+    *   Description: The time in seconds after which an inactive runner (no heartbeats) will be automatically deprovisioned.
+    *   Default: `60`.
+*   **`CLEANUP_INTERVAL_SECONDS`**: (Not directly an environment variable, but a related constant)
+    *   Description: The interval in seconds at which the orchestrator checks for and cleans up inactive runners.
+    *   Fixed at: `30` seconds in the current code.
+
+**Note on Docker Configuration:**
+*   The Docker image name for runners is hardcoded as `runner-image`.
+*   The Docker label key for tagging runner containers is hardcoded as `taylored-runner-session-id`.
+*   The Docker socket path defaults to `/var/run/docker.sock` as per `dockerode` library defaults.
+*   There is currently no implemented limit on the maximum number of concurrent runners (`MAX_CONCURRENT_RUNNERS`).

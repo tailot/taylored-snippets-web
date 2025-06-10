@@ -2,6 +2,12 @@
 
 This is an Angular web application project designed to create, manage, and run text and code "snippets", offering isolated execution environments for each snippet. The application can be run in two distinct modes: **singletenant**, which uses a single shared execution service, and **multitenant**, which provides an isolated Docker execution environment for each user session via an orchestration service.
 
+## Key Features
+
+The application features a user-friendly menu that allows for easy management of your text and code snippets. Through the menu, you can also access application settings, as well as save and restore your snippets and their execution histories.
+
+One of the convenient features is the execution history, which is automatically saved in your web browser. This allows you to review past snippet executions at any time. Furthermore, the application provides options to save and restore both your snippets and their complete execution histories, ensuring your work is preserved and easily accessible.
+
 ## Project Structure
 
 The repository is organized as follows:

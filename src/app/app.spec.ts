@@ -58,7 +58,7 @@ describe('App', () => {
     component.sideMenuItems = [
       {
         label: 'Test Item',
-        snippets: [{ id: 1, type: 'text', value: '', getTayloredBlock: () => new Document() }] // Mock snippet base
+        snippets: [{ id: 1, type: 'text', value: '', getTayloredBlock: () => "<taylored/>" }] // Mock snippet base
       }
     ];
     fixture.detectChanges(); // Applica l'associazione dati
@@ -84,7 +84,7 @@ describe('App', () => {
         type: 'text',
         value: 'Test text for menu item',
         // Provide a simple XMLDocument for getTayloredBlock
-        getTayloredBlock: () => new DOMParser().parseFromString('<taylored text="true"><value>Test text for menu item</value></taylored>', "text/xml")
+        getTayloredBlock: () => '<taylored text="true"><value>Test text for menu item</value></taylored>'
       };
       mockMenuItem = {
         label: 'Test Execution Item',
@@ -133,7 +133,7 @@ describe('App', () => {
         label: 'Second Test Item',
         snippets: [{
           id: 2, type: 'compute', value: '#!bash\necho "hello"',
-          getTayloredBlock: () => new DOMParser().parseFromString('<taylored compute="true"><value>#!bash\necho "hello"</value></taylored>', "text/xml")
+          getTayloredBlock: () => '<taylored compute="true"><value>#!bash\necho "hello"</value></taylored>'
         }]
       };
 

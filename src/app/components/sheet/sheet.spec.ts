@@ -241,9 +241,10 @@ describe('SheetComponent', () => {
       let textSnippet = component.snippets[0];
       expect(typeof textSnippet.getTayloredBlock).toBe('function');
       let textXmlDoc = textSnippet.getTayloredBlock();
-      expect(textXmlDoc).toBeInstanceOf(XMLDocument);
-      expect(textXmlDoc.documentElement.tagName).toBe('taylored');
-      expect(textXmlDoc.documentElement.getAttribute('text')).toBe('true');
+      expect(typeof textXmlDoc).toBe('string');
+      const parsedTextXml = new DOMParser().parseFromString(textXmlDoc, "text/xml");
+      expect(parsedTextXml.documentElement.tagName).toBe('taylored');
+      expect(parsedTextXml.documentElement.getAttribute('text')).toBe('true');
 
       // Reset for compute snippet (or use a new component instance for isolation)
       component.snippets = [];
@@ -251,9 +252,10 @@ describe('SheetComponent', () => {
       let computeSnippet = component.snippets[0];
       expect(typeof computeSnippet.getTayloredBlock).toBe('function');
       let computeXmlDoc = computeSnippet.getTayloredBlock();
-      expect(computeXmlDoc).toBeInstanceOf(XMLDocument);
-      expect(computeXmlDoc.documentElement.tagName).toBe('taylored');
-      expect(computeXmlDoc.documentElement.getAttribute('compute')).toBeTruthy();
+      expect(typeof computeXmlDoc).toBe('string');
+      const parsedComputeXml = new DOMParser().parseFromString(computeXmlDoc, "text/xml");
+      expect(parsedComputeXml.documentElement.tagName).toBe('taylored');
+      expect(parsedComputeXml.documentElement.getAttribute('compute')).toBeTruthy();
     });
   });
 
@@ -316,10 +318,7 @@ describe('SheetComponent', () => {
       mockSnippetComputeInstance.value = '#!/bin/bash\necho "Test"';
       mockSnippetComputeInstance.type = 'compute';
       // Explicitly define getTayloredBlock for the mock instance if it's part of the Snippet interface
-      mockSnippetComputeInstance.getTayloredBlock = () => {
-          const doc = new DOMParser().parseFromString('<taylored compute="true"></taylored>', "text/xml");
-          return doc;
-      };
+      mockSnippetComputeInstance.getTayloredBlock = () => '<taylored compute="true"></taylored>';
     });
 
     it('should correctly process finishedProcessing, create MenuItem, and emit newMenuItem', () => {
@@ -328,7 +327,7 @@ describe('SheetComponent', () => {
       // Setup initial snippets in the sheet
       const textSnippet: Snippet = {
         id: 1, type: 'text', value: 'Hello',
-        getTayloredBlock: () => new DOMParser().parseFromString('<taylored text="true"></taylored>', "text/xml")
+        getTayloredBlock: () => '<taylored text="true"></taylored>'
       };
       component.snippets = [textSnippet, mockSnippetComputeInstance];
       const expectedSnippetsInMenuItem = [...component.snippets]; // Capture the state

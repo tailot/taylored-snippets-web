@@ -6,17 +6,37 @@ import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-
 import { CommonModule } from '@angular/common';
 import { SnippetText } from '../snippet-text/snippet-text';
 import { SnippetCompute } from '../snippet-compute/snippet-compute';
+/**
+ * @fileoverview Defines the Sheet component, which manages a collection of snippets (text or compute).
+ * It allows users to add, remove, reorder, save, and load snippets.
+ */
 import { RunnerService } from '../../services/runner.service';
 import { MenuItem } from '../side-menu/menu-item';
 
+/**
+ * Represents a snippet, which can be either a text block or a compute block.
+ */
 export interface Snippet {
+  /** A unique identifier for the snippet. */
   id: number;
+  /** The type of the snippet, determining its behavior and rendering. */
   type: 'text' | 'compute';
-  getTayloredBlock(): XMLDocument;
+  /**
+   * Retrieves the Taylored block representation of the snippet.
+   * This is used for serialization and interaction with the runner.
+   * @returns An XMLDocument representing the snippet's Taylored block.
+   */
+  getTayloredBlock(): string;
+  /** Optional output from the execution of a compute snippet. */
   output?: string;
+  /** The primary content or value of the snippet (e.g., text content or code). */
   value: string;
 }
 
+/**
+ * The Sheet component acts as a container for managing and displaying snippets.
+ * It supports operations like adding, updating, deleting, reordering, saving, and loading snippets.
+ */
 @Component({
   selector: 'app-sheet',
   imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, SnippetText, SnippetCompute, DragDropModule],
@@ -25,13 +45,29 @@ export interface Snippet {
   styleUrl: './sheet.sass'
 })
 export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
+  /**
+   * Array holding all the snippets currently on the sheet.
+   */
   snippets: Snippet[] = [];
+  /**
+   * Counter to generate unique IDs for new snippets.
+   */
   private nextId = 0;
   private runnerService = inject(RunnerService);
   private cdr = inject(ChangeDetectorRef);
+  /**
+   * Emits an event when a new menu item should be created, typically after a compute snippet execution.
+   */
   @Output() newMenuItem = new EventEmitter<MenuItem>();
+  /**
+   * Counter for naming menu items created from executions.
+   */
   private executionCounter: number = 1;
 
+  /**
+   * Adds a new snippet of the specified type to the sheet.
+   * @param type The type of snippet to add ('text' or 'compute').
+   */
   addSnippet(type: 'text' | 'compute'): void {
     let newSnippet: Snippet;
     const currentId = this.nextId++;
@@ -46,6 +82,11 @@ export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
     // The 'type' property is already set in the respective class constructors/definitions.
     this.snippets.push(newSnippet);
   }
+
+  /**
+   * Updates an existing snippet or removes it if its value is empty.
+   * @param ret The snippet instance (either SnippetText or SnippetCompute) that has been updated.
+   */
   updateSnippet(ret: SnippetText | SnippetCompute): void {
     if (ret.value === '') {
       this.snippets = this.snippets.filter(snippet => snippet.id !== ret.id);
@@ -57,6 +98,10 @@ export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
     }
   }
 
+  /**
+   * Saves the current state of all snippets on the sheet to a JSON file.
+   * The file is then downloaded by the user's browser.
+   */
   saveSheet(): void {
     if (this.snippets.length === 0) {
       return;
@@ -83,20 +128,38 @@ export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
     URL.revokeObjectURL(url);
   }
 
+  /**
+   * Handles the dropping of a snippet within the sheet, allowing reordering.
+   * @param event The CdkDragDrop event containing information about the drag operation.
+   */
   drop(event: CdkDragDrop<Snippet[]>): void {
     moveItemInArray(this.snippets, event.previousIndex, event.currentIndex);
   }
 
+  /**
+   * Populates the sheet with a given array of snippets.
+   * This is typically used when loading snippets from the side menu.
+   * @param newSnippets An array of Snippet objects.
+   */
   populateSnippets(newSnippets: Snippet[]): void {
     this.snippets = newSnippets;
   }
 
+  /**
+   * Handles the 'dragover' event to allow dropping files onto the sheet.
+   * @param event The DragEvent.
+   */
   @HostListener('dragover', ['$event'])
   onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
   }
 
+  /**
+   * Handles the 'drop' event, specifically for loading snippets from a dropped JSON file.
+   * It reads the file, parses the JSON, and hydrates the snippets.
+   * @param event The DragEvent, which may contain dropped files.
+   */
   @HostListener('drop', ['$event'])
   onDrop(event: DragEvent): void {
     event.preventDefault();
@@ -174,6 +237,11 @@ export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
     }
   }
 
+  /**
+   * Handles the completion of processing for a compute snippet.
+   * It creates a new menu item representing the state of the sheet at this execution point.
+   * @param snippetComputeInstance The SnippetCompute instance that finished processing.
+   */
   public handleFinishedProcessing(snippetComputeInstance: SnippetCompute): void {
     const menuItem: MenuItem = {
       label: "Execution " + this.executionCounter,

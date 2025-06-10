@@ -53,12 +53,12 @@ This mode is ideal for production or for tests that require complete session iso
 
 2.  This command will start the following services:
     * `frontend-multitenant`: The Angular application, accessible at `http://localhost:80`.
-    * `orchestrator-multitenant`: The Node.js service that listens on port `3001` and manages the runners in a multi-tenant fashion (REUSE_RUNNER_MODE=false).
-    * `runner-builder`: This service builds the `runner-image` and exits.
+    * `orchestrator-multitenant`: The Node.js orchestrator service (see `src/orchestrator/README.md`). Listens on port `3001` and manages a separate Docker runner instance for each user session (`REUSE_RUNNER_MODE=false` is set for this service in `docker-compose.yml`).
+    * `runner-builder`: This service builds the `runner-image` (see `src/runner/README.md`) and then exits.
 
 ### Singletenant Mode
 
-This mode is simpler and suitable for local development. It uses a single `runner-standalone` service shared by all users.
+This mode is simpler and suitable for local development. It uses a single runner instance, managed by the orchestrator service configured appropriately.
 
 1.  **Start the services with the `singletenant` profile:**
     ```bash
@@ -67,8 +67,8 @@ This mode is simpler and suitable for local development. It uses a single `runne
 
 2.  This command will start the following services:
     * `frontend-singletenant`: The Angular application, accessible at `http://localhost:80`.
-    * `orchestrator-singletenant`: The Node.js service that listens on port `3001` and uses a single, shared runner instance (REUSE_RUNNER_MODE=true).
-    * `runner-builder`: This service builds the `runner-image` and exits.
+    * `orchestrator-singletenant`: The Node.js orchestrator service. For this profile, it listens on port `3001` and is configured via `docker-compose.yml` to use `REUSE_RUNNER_MODE=true`, meaning it manages a single, shared runner instance for all users.
+    * `runner-builder`: This service builds the `runner-image` and then exits.
 
 Once the services are running, you can access the application by opening your browser and navigating to `http://localhost:80`.
 

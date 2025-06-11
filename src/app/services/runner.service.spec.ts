@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { provideZonelessChangeDetection } from '@angular/core'; // Added
+import { of, throwError } from 'rxjs'; // Added of, throwError
 import { RunnerService } from './runner.service';
 import * as socketIoClientModule from 'socket.io-client'; // Import the module itself
 
@@ -103,37 +104,37 @@ describe('RunnerService', () => {
 
     let initializeSocketSpy: jasmine.Spy;
 
-    it('should provision a new runner, initialize socket, and update subjects', async () => {
-      // Ensure no existing session
+    beforeEach(() => {
+      // Reset spies for each test in this describe block
+      if (initializeSocketSpy) {
+        initializeSocketSpy.calls.reset();
+      }
+    });
+
+    it('should provision a new runner, initialize socket, and update subjects', (done) => {
       (service as any).currentSessionId = null;
       (service as any).runnerSocket = null;
 
       initializeSocketSpy = spyOn(service as any, 'initializeSocket').and.callFake((endpointParam: string) => {
-        // Simulate that initializeSocket sets up the runnerSocket
         expect(endpointParam).toBe(mockProvisionResponse.endpoint);
         (service as any).runnerSocket = mockSocket;
-        // The real initializeSocket would also call mockSocket.on(...).
-        // For this test, we focus on provisionRunner's orchestration.
       });
 
-      const provisionPromise = service.provisionRunner();
+      service.provisionRunner().subscribe(endpoint => {
+        expect(endpoint).toBe(mockProvisionResponse.endpoint);
+        expect((service as any).currentSessionId).toBe(mockProvisionResponse.sessionId);
+        expect((service as any).runnerEndpointSubject.getValue()).toBe(mockProvisionResponse.endpoint);
+        expect(initializeSocketSpy).toHaveBeenCalledWith(mockProvisionResponse.endpoint);
+        expect((service as any).runnerSocket).toBe(mockSocket);
+        done();
+      });
 
       const req = httpMock.expectOne(`${orchestratorUrl}/api/runner/provision`);
       expect(req.request.method).toBe('POST');
       req.flush(mockProvisionResponse);
-      const endpoint = await provisionPromise;
-
-      expect(endpoint).toBe(mockProvisionResponse.endpoint);
-      expect((service as any).currentSessionId).toBe(mockProvisionResponse.sessionId);
-      expect((service as any).runnerEndpointSubject.getValue()).toBe(mockProvisionResponse.endpoint);
-
-      expect(initializeSocketSpy).toHaveBeenCalledWith(mockProvisionResponse.endpoint);
-      expect((service as any).runnerSocket).toBe(mockSocket); // Ensure the service's socket is our mock
-      // Assertions for mockSocket.on calls are removed as the faked initializeSocket
-      // doesn't replicate that part unless explicitly coded, which is not the focus here.
     });
 
-    it('should return existing endpoint if already provisioned and connected', async () => {
+    it('should return existing endpoint if already provisioned and connected', (done) => {
       const existingEndpoint = 'http://existing-runner:3000';
       (service as any).currentSessionId = 'existing-session-id';
       (service as any).runnerSocket = mockSocket;
@@ -141,61 +142,70 @@ describe('RunnerService', () => {
       (service as any).runnerEndpointSubject.next(existingEndpoint);
       initializeSocketSpy = spyOn(service as any, 'initializeSocket');
 
-      const endpoint = await service.provisionRunner();
-
-      expect(endpoint).toBe(existingEndpoint);
-      httpMock.expectNone(`${orchestratorUrl}/api/runner/provision`); // No HTTP call
-      expect(initializeSocketSpy).not.toHaveBeenCalled(); // No new socket initialization
+      service.provisionRunner().subscribe(endpoint => {
+        expect(endpoint).toBe(existingEndpoint);
+        httpMock.expectNone(`${orchestratorUrl}/api/runner/provision`);
+        expect(initializeSocketSpy).not.toHaveBeenCalled();
+        done();
+      });
     });
 
-     it('should deprovision if session exists but socket not connected, then reprovision', async () => {
+    it('should deprovision if session exists but socket not connected, then reprovision', (done) => {
       (service as any).currentSessionId = 'old-session-id';
-      (service as any).runnerSocket = null; // or mockSocket.connected = false;
+      (service as any).runnerSocket = null;
 
-      // Mock deprovision call
       initializeSocketSpy = spyOn(service as any, 'initializeSocket').and.callFake((endpoint: string) => {
         (service as any).runnerSocket = mockSocket;
       });
 
-      const provisionPromise = service.provisionRunner();
+      service.provisionRunner().subscribe(endpoint => {
+        expect(endpoint).toBe(mockProvisionResponse.endpoint);
+        expect((service as any).currentSessionId).toBe(mockProvisionResponse.sessionId);
+        expect(initializeSocketSpy).toHaveBeenCalledWith(mockProvisionResponse.endpoint);
+        // Check if initializeSocket was called only once for the new provisioning
+        // This depends on how the spy is set up and reset. If it's reset in beforeEach, this is fine.
+        expect(initializeSocketSpy).toHaveBeenCalledTimes(1);
+        done();
+      });
+
       const deprovisionReq = httpMock.expectOne(`${orchestratorUrl}/api/runner/deprovision`);
       expect(deprovisionReq.request.method).toBe('POST');
       expect(deprovisionReq.request.body).toEqual({ sessionId: 'old-session-id' });
+      // Important: Flushing the deprovision request triggers the switchMap in provisionRunner
       deprovisionReq.flush({ message: 'Deprovisioned successfully' });
 
-      // Allow the event loop to process, ensuring the async provisionRunner
-      // makes the subsequent HTTP call and it's seen by HttpTestingController.
-      await new Promise(resolve => setTimeout(resolve, 0));
-      // Mock provision call
+      // After deprovision completes, the provision call is made
       const provisionReq = httpMock.expectOne(`${orchestratorUrl}/api/runner/provision`);
       expect(provisionReq.request.method).toBe('POST');
       provisionReq.flush(mockProvisionResponse);
-
-      const endpoint = await provisionPromise;
-      expect(endpoint).toBe(mockProvisionResponse.endpoint);
-      expect((service as any).currentSessionId).toBe(mockProvisionResponse.sessionId);
-      expect(initializeSocketSpy).toHaveBeenCalledTimes(1); // initializeSocket for the new provisioning
     });
 
 
-    it('should handle provisioning failure', async () => {
+    it('should handle provisioning failure and return null', (done) => {
       (service as any).currentSessionId = null;
       (service as any).runnerSocket = null;
-
       initializeSocketSpy = spyOn(service as any, 'initializeSocket');
 
-      const provisionPromise = service.provisionRunner();
+      service.provisionRunner().subscribe(endpoint => {
+        expect(endpoint).toBeNull();
+        expect((service as any).currentSessionId).toBeNull();
+        expect((service as any).runnerEndpointSubject.getValue()).toBeNull();
+
+        // Check for the specific error messages logged by the service
+        const consoleArgs = consoleErrorSpy.calls.allArgs();
+        expect(consoleArgs).toContain(
+          jasmine.arrayContaining(['Error in Runner provisioning:', jasmine.any(HttpErrorResponse)])
+        );
+        expect(consoleArgs).toContain(
+          jasmine.arrayContaining(['Runner provisioning failed overall:', jasmine.any(Error)]) ઉત્પ// The inner error is wrapped
+        );
+
+        expect(initializeSocketSpy).not.toHaveBeenCalled();
+        done();
+      });
 
       const req = httpMock.expectOne(`${orchestratorUrl}/api/runner/provision`);
       req.flush({ message: 'Failed to provision' }, { status: 500, statusText: 'Server Error' });
-
-      const endpoint = await provisionPromise;
-
-      expect(endpoint).toBeNull();
-      expect((service as any).currentSessionId).toBeNull();
-      expect((service as any).runnerEndpointSubject.getValue()).toBeNull();
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Runner provisioning failed:', jasmine.any(Error));
-      expect(initializeSocketSpy).not.toHaveBeenCalled();
     });
   });
 

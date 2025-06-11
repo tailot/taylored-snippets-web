@@ -1,4 +1,4 @@
-import { Component, Output, Input, OnInit, OnDestroy, ChangeDetectorRef, EventEmitter, inject } from '@angular/core';
+import { Component, Output, Input, OnInit, OnDestroy, ChangeDetectorRef, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -74,10 +74,10 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
    * @param runnerService Service to execute the snippet's code.
    * @param cdr Change detector reference for updating the view.
    */
-  private runnerService = inject(RunnerService);
-  private cdr = inject(ChangeDetectorRef);
-
-  constructor() {}
+  constructor(
+    private runnerService: RunnerService,
+    private cdr: ChangeDetectorRef
+  ) {}
   
   /**
    * The output received from executing the snippet.

@@ -38,19 +38,6 @@ Before you start, make sure you have the following installed:
 * **npm**: Is installed along with Node.js.
 * **Docker and Docker Compose**: Essential for running the application with its backend services.
 
-## Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <REPOSITORY_URL>
-    cd <DIRECTORY_NAME>
-    ```
-
-2.  **Install Node.js dependencies:**
-    ```bash
-    npm install
-    ```
-
 ## Building the Runner Image
 
 The `runner-image`, named `runner-image` as defined in `docker-compose.yml`, is crucial for the application's operation. It contains the necessary environment for code execution and is used by the orchestrator service in multitenant mode to create isolated runner instances for each user session. This image is automatically built by the `runner-builder` service within Docker Compose when you launch the application using either the `multitenant` or `singletenant` profile.

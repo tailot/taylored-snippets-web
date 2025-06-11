@@ -127,7 +127,7 @@ export class RunnerService implements OnDestroy {
     try {
         const xhr = new XMLHttpRequest();
         // Opening a POST request synchronously
-        xhr.open('POST', url, false); // false per sincrono
+        xhr.open('POST', url, false); // false for synchronous
         xhr.setRequestHeader('Content-Type', 'application/json');
         // There's no good way to handle the response or errors here in synchronous mode
         xhr.send(payload);
@@ -202,7 +202,7 @@ export class RunnerService implements OnDestroy {
 
       const response = await this.http.post<{ message: string, endpoint: string, sessionId: string }>(
         `${this.orchestratorUrl}/api/runner/provision`,
-        {}, // Body vuoto, l'orchestratore può generare l'ID di sessione
+        {}, // Empty body, the orchestrator can generate the session ID
         { headers }
       ).pipe(
         tap(res => console.log('Provisioning response:', res)),
@@ -312,7 +312,7 @@ export class RunnerService implements OnDestroy {
       reconnectionAttempts: 5, // Number of reconnection attempts
       reconnectionDelay: 1000, // Delay between attempts in ms
       timeout: 10000,
-      // transports: ['websocket'] // Opzionalmente forza websocket
+      // transports: ['websocket'] // Optionally forces websocket
     });
 
     this.runnerSocket.on('connect', () => {

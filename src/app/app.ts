@@ -57,25 +57,7 @@ export class App implements OnInit {
    * @param runnerService The service for running code snippets.
    */
   constructor(private runnerService: RunnerService) {
-    // Sample MenuItems
-    // this.sideMenuItems = [
-    //   {
-    //     label: 'Menu Item 1 (Text)',
-    //     snippets: [sampleTextSnippet]
-    //   },
-    //   {
-    //     label: 'Menu Item 2 (Compute)',
-    //     snippets: [sampleComputeSnippet]
-    //   },
-    //   {
-    //     label: 'Menu Item 3 (Both)',
-    //     snippets: [sampleTextSnippet, sampleComputeSnippet]
-    //   },
-    //   {
-    //     label: 'Menu Item 4 (Empty)',
-    //     snippets: []
-    //   }
-    // ];
+    // Commented-out section removed
   }
 
   /**
@@ -83,8 +65,18 @@ export class App implements OnInit {
    * Provisions the runner service.
    */
   ngOnInit() {
-    this.runnerService.provisionRunner().catch(error => {
-      console.error('Error provisioning runner:', error);
+    this.runnerService.provisionRunner().subscribe({
+      next: (runnerEndpoint) => {
+        if (runnerEndpoint) {
+          console.log('Runner provisioned successfully at:', runnerEndpoint);
+        } else {
+          // This case might indicate provisioning handled internally (already provisioned) or a failure handled by the service
+          console.log('Runner provisioning process completed.');
+        }
+      },
+      error: (error) => {
+        console.error('Error provisioning runner:', error);
+      }
     });
   }
 

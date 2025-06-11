@@ -75,7 +75,7 @@ export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
     if (type === 'text') {
       newSnippet = new SnippetText();
     } else { // type === 'compute'
-      newSnippet = new SnippetCompute(this.runnerService, this.cdr);
+      newSnippet = new SnippetCompute();
     }
 
     newSnippet.id = currentId;
@@ -201,7 +201,7 @@ export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
           if (item.type === 'text') {
             newSnippet = new SnippetText();
           } else { // item.type === 'compute'
-            newSnippet = new SnippetCompute(this.runnerService, this.cdr);
+            newSnippet = new SnippetCompute();
           }
 
           newSnippet.id = item.id;

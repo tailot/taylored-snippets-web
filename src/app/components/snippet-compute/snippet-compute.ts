@@ -1,4 +1,4 @@
-import { Component, Output, Input, OnInit, OnDestroy, ChangeDetectorRef, EventEmitter } from '@angular/core';
+import { Component, Output, Input, OnInit, OnDestroy, ChangeDetectorRef, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -74,7 +74,10 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
    * @param runnerService Service to execute the snippet's code.
    * @param cdr Change detector reference for updating the view.
    */
-  constructor(private runnerService: RunnerService, private cdr: ChangeDetectorRef) {}
+  private runnerService = inject(RunnerService);
+  private cdr = inject(ChangeDetectorRef);
+
+  constructor() {}
   
   /**
    * The output received from executing the snippet.
@@ -103,45 +106,51 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
    * @returns An String for the compute snippet.
    */
   getTayloredBlock(): string {
-    const timestamp = Date.now().toString();
-    const encodedTimestamp = btoa(timestamp);
-    const xmlString = `<taylored number="${this.id}" compute="${encodedTimestamp}">\n${this.value}\n</taylored>`;
+    // Timestamp and encodedTimestamp removed
+    const xmlString = `<taylored number="${this.id}">\n${this.value}\n</taylored>`;
     return xmlString;
   }
 
   /**
-   * Validates the snippet content, specifically checking for a valid shebang line.
-   * The play button is disabled if the shebang is missing, invalid, or if there's no code after it.
+   * Normalizes snippet content and then updates the play button state.
    * It normalizes escaped newlines in the code.
    */
   onSnippetChange(): void {
-    this.isPlayButtonDisabled = true;
-
-    if (!this.value) {
-      return;
+    if (this.value) {
+      // Normalize escaped newlines that might come from test inputs or other sources
+      this.value = this.value.replace(/\\n/g, '\n');
     }
+    this.updatePlayButtonState();
+  }
 
-    // Normalize escaped newlines that might come from test inputs or other sources
-    const processedCode = this.value.replace(/\\n/g, '\n');
-    const lines = processedCode.split('\n');
+  private isSnippetValid(): boolean {
+    if (!this.value) {
+      return false;
+    }
+    const lines = this.value.split('\n');
 
     // Shebang must be on the first line
     if (lines.length > 0) {
       const firstLine = lines[0].trimStart();
       if (firstLine.startsWith('#!')) {
-        // Regex ensures interpreter is at the end of the firstLine
         const shebangMatch = firstLine.match(/^#!(?:\/(?:usr\/)?bin\/env\s+|\/(?:usr\/|usr\/local\/)?bin\/)?([a-zA-Z0-9._-]+)$/);
-
         if (shebangMatch && shebangMatch[1]) {
           const interpreter = shebangMatch[1];
           if (VALID_INTERPRETERS.includes(interpreter)) {
-            if (lines.length > 1) {
-              this.isPlayButtonDisabled = false;
-            }
+            // Check if there is any code/content after the shebang line
+            return lines.slice(1).some(line => line.trim() !== '');
           }
         }
       }
     }
+    return false; // Not valid if any condition above is not met
+  }
+
+  /**
+   * Updates the state of the play button based on runner readiness and snippet validity.
+   */
+  private updatePlayButtonState(): void {
+    this.isPlayButtonDisabled = !this.isRunnerReady || !this.isSnippetValid();
   }
 
   /**
@@ -169,7 +178,7 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
     this.subscriptions.add(
       this.runnerService.isRunnerReady$.subscribe(isReady => {
         this.isRunnerReady = isReady;
-        // Future: this.updatePlayButtonState(); (or similar if combined with snippet validity)
+        this.updatePlayButtonState();
       })
     );
 
@@ -179,17 +188,23 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
           if (result.error) {
             this.output = `Error: ${result.error}`;
           } else if (result.output) {
-            // Initialize output as empty string if undefined, then concatenate
-            this.output = (this.output || '') + result.output;
-            this.cdr.detectChanges();
-            if (this.output?.includes('Finished processing. Successfully created 1 taylored file(s).')) {
-              this.finishedProcessing.emit(this);
-            }
+            this.output = result.output;
+          } else {
+            // Safeguard: if neither error nor output is present, clear output or log
+            this.output = '';
+            console.warn('SnippetOutput received without error or output for id:', this.id);
           }
-          // If neither error nor output is present for this ID, this.output remains unchanged.
+          this.cdr.detectChanges();
+
+          // Check for finishedProcessing condition based on the new output
+          if (this.output?.includes('Finished processing. Successfully created 1 taylored file(s).')) {
+            this.finishedProcessing.emit(this);
+          }
         }
       })
     );
+    // Initial check for play button state
+    this.updatePlayButtonState();
   }
 
   /**

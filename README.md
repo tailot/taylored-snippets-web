@@ -2,6 +2,23 @@
 
 This is an Angular web application project designed to create, manage, and run text and code "snippets", offering isolated execution environments for each snippet. The application can be run in two distinct modes: **singletenant**, which uses a single shared execution service, and **multitenant**, which provides an isolated Docker execution environment for each user session via an orchestration service.
 
+## Key Features
+
+### Snippet Management
+- **Snippet Creation**: Users can add two types of snippets to a worksheet:
+    - Text Snippets: For annotations and static content.
+    - Compute Snippets: For writing and executing code.
+- **Snippet Editor**: Each snippet features a text area for inputting and editing content.
+- **Dynamic Reordering**: Snippets can be reordered via drag-and-drop within the sheet.
+
+### Code Execution
+- **Isolated Environments**: The application can be run in two distinct modes:
+    - Multitenant Mode: Provides a fully isolated Docker execution environment for each user session, managed by an orchestrator service. This is ideal for production and tests requiring complete isolation.
+    - Singletenant Mode: Uses a single, shared runner instance, suitable for local development.
+- **Script Execution**: Compute snippets can execute code. Standard output and errors are displayed directly in the user interface.
+- **Supported Interpreters**: A wide range of interpreters are supported via shebang, including bash, python3, node, perl, php, java and more.
+- **Containers also work offline**
+
 ## Project Structure
 
 The repository is organized as follows:

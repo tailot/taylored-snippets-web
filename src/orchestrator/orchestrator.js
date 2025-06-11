@@ -22,7 +22,7 @@ const docker = new Docker({ socketPath: '/var/run/docker.sock' });
  * @description The time in seconds after which an inactive runner will be cleaned up.
  * Defaults to 60 seconds if not set via environment variable `INACTIVITY_TIMEOUT_SECONDS`.
  */
-const INACTIVITY_TIMEOUT_SECONDS = parseInt(process.env.INACTIVITY_TIMEOUT_SECONDS, 10) || 60; // Default to 5 minutes if not set
+const INACTIVITY_TIMEOUT_SECONDS = parseInt(process.env.INACTIVITY_TIMEOUT_SECONDS, 10) || 60;
 /**
  * @const {number} CLEANUP_INTERVAL_SECONDS
  * @description The interval in seconds at which the orchestrator checks for and cleans up inactive runners.

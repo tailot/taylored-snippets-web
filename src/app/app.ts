@@ -8,7 +8,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
-import { Sheet, Snippet } from './components/sheet/sheet'; // Correct Snippet import
+import { Sheet, Snippet } from './components/sheet/sheet';
 import { RunnerService } from './services/runner.service';
 import { SideMenuComponent } from './components/side-menu/side-menu';
 import { FileManagerComponent } from './components/file-manager/file-manager.component';

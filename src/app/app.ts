@@ -1,7 +1,7 @@
 /**
  * @fileoverview This file defines the root component of the application.
  */
-import { Component, ViewChild, OnInit } from '@angular/core';
+import { Component, ViewChild, OnInit, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
@@ -53,30 +53,16 @@ export class App implements OnInit {
   public sideMenuItems: MenuItem[] = [];
 
   /**
+   * EventEmitter to signal the FileManagerComponent to refresh its directory listing.
+   * Emits `true` to trigger a refresh.
+   */
+  refreshTrigger = new EventEmitter<boolean>();
+
+  /**
    * Constructs the App component.
    * @param runnerService The service for running code snippets.
    */
-  constructor(private runnerService: RunnerService) {
-    // Sample MenuItems
-    // this.sideMenuItems = [
-    //   {
-    //     label: 'Menu Item 1 (Text)',
-    //     snippets: [sampleTextSnippet]
-    //   },
-    //   {
-    //     label: 'Menu Item 2 (Compute)',
-    //     snippets: [sampleComputeSnippet]
-    //   },
-    //   {
-    //     label: 'Menu Item 3 (Both)',
-    //     snippets: [sampleTextSnippet, sampleComputeSnippet]
-    //   },
-    //   {
-    //     label: 'Menu Item 4 (Empty)',
-    //     snippets: []
-    //   }
-    // ];
-  }
+  constructor(private runnerService: RunnerService) {}
 
   /**
    * Initializes the component.
@@ -103,6 +89,7 @@ export class App implements OnInit {
    * @param menuItem The new menu item to add.
    */
   public onNewMenuItem(menuItem: MenuItem): void {
-    this.sideMenuItems.push(menuItem);
+      this.sideMenuItems.push(menuItem)
+      this.refreshTrigger.emit(true);
   }
 }

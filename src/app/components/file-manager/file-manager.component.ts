@@ -2,7 +2,7 @@
  * @fileoverview This file defines the FileManagerComponent, which allows users to browse and download files
  * from the runner's file system.
  */
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject, Input, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon'; // Added
@@ -41,14 +41,38 @@ export class FileManagerComponent implements OnInit, OnDestroy {
    */
   private fileContentSubscription: Subscription | undefined;
 
+  /** Subscription to the refreshTrigger EventEmitter. */
+  private refreshTriggerSubscription: Subscription | undefined;
+
+  /**
+   * Service for interacting with the code execution runner.
+   * Used for listing directories, downloading files, etc.
+   */
   private runnerService = inject(RunnerService);
+
+  /**
+   * Reference to Angular's ChangeDetectorRef, used to manually trigger change detection
+   * when asynchronous operations update component data outside of Angular's default detection cycle.
+   */
   private cdr = inject(ChangeDetectorRef);
+
+  /** Stores the last known runner readiness state. */
+  private isRunnerCurrentlyReady: boolean = false;
+
+  /**
+   * An EventEmitter that, when triggered with `true`, signals the component to refresh
+   * its current directory listing, provided the runner is ready.
+   * This allows parent components to programmatically request a refresh of the file manager's view.
+   */
+  @Input() public refreshTrigger = new EventEmitter<boolean>();
+
 
   /**
    * Initializes the component, subscribing to runner events for directory listings and readiness.
    * It lists the root directory ('./') once the runner is ready.
    */
   ngOnInit(): void {
+    // Subscription to directory listing updates
     this.directoryListingSubscription = this.runnerService.directoryListing$.subscribe(listing => {
       if (listing && Array.isArray(listing.files)) {
         this.listedFiles = listing.files;
@@ -61,24 +85,38 @@ export class FileManagerComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Subscription to file content for downloads
     this.fileContentSubscription = this.runnerService.fileContent$.subscribe((fileData: FileContent) => {
       this.triggerBrowserDownload(fileData.path, fileData.content);
     });
 
+    // Subscription to runner readiness state
     this.runnerReadySubscription = this.runnerService.isRunnerReady$.subscribe(isReady => {
+      this.isRunnerCurrentlyReady = isReady; // Store the latest readiness state
       if (isReady) {
         // When the runner is ready, list the directory stored in currentListingPath.
         // currentListingPath is initialized to './', so it will load the root on first readiness.
         console.log(`File Manager: Runner is ready. Listing directory: ${this.currentListingPath}`);
         this.listCurrentDirectory(this.currentListingPath);
       } else {
+        // Runner is not ready
         console.log('File Manager: Runner is not ready. Clearing file list.');
         this.listedFiles = []; // Clear files if runner becomes not ready
         this.cdr.detectChanges();
       }
     });
+
+    // Subscription to the refreshTrigger input EventEmitter
+    if (this.refreshTrigger) {
+      this.refreshTriggerSubscription = this.refreshTrigger.subscribe((shouldRefresh: boolean) => {
+        if (shouldRefresh && this.isRunnerCurrentlyReady) {
+          this.listCurrentDirectory(this.currentListingPath);
+        }
+      });
+    }
     // The initial call to listCurrentDirectory is now handled by the isRunnerReady$ subscription
   }
+
 
   /**
    * Requests the RunnerService to list the contents of the specified directory path.
@@ -176,6 +214,9 @@ export class FileManagerComponent implements OnInit, OnDestroy {
     }
     if (this.runnerReadySubscription) {
       this.runnerReadySubscription.unsubscribe();
+    }
+    if (this.refreshTriggerSubscription) {
+      this.refreshTriggerSubscription.unsubscribe();
     }
   }
 }

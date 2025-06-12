@@ -16,7 +16,22 @@ This is an Angular web application project designed to create, manage, and run t
     - Multitenant Mode: Provides a fully isolated Docker execution environment for each user session, managed by an orchestrator service. This is ideal for production and tests requiring complete isolation.
     - Singletenant Mode: Uses a single, shared runner instance, suitable for local development.
 - **Script Execution**: Compute snippets can execute code. Standard output and errors are displayed directly in the user interface.
-- **Supported Interpreters**: A wide range of interpreters are supported via shebang, including bash, python3, node, perl, php, java and more.
+- **Supported Interpreters**: The following interpreters are supported via shebangs in the runner environment:
+    * `#!/usr/bin/env bash`
+    * `#!/usr/bin/env zsh`
+    * `#!/usr/bin/env tcsh`
+    * `#!/usr/bin/env python3`
+    * `#!/usr/bin/env node`
+    * `#!/usr/bin/env perl`
+    * `#!/usr/bin/env ruby`
+    * `#!/usr/bin/env php`
+    * `#!/usr/bin/java --source 21`
+    * `#!/usr/bin/env lua5.4`
+    * `#!/usr/bin/env Rscript`
+    * `#!/usr/bin/gawk -f`
+    * `#!/usr/bin/env tclsh`
+    * `#!/usr/bin/env expect`
+    * `#!/usr/bin/env ts-node`
 - **Containers also work offline**
 
 ## Project Structure

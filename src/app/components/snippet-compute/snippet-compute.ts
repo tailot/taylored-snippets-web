@@ -124,7 +124,13 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
             this.output = (this.output || '') + result.output;
             this.cdr.detectChanges();
             if (this.output?.includes('Finished processing. Successfully created 1 taylored file(s).')) {
-              this.finishedProcessing.emit(this);
+
+              const snapshotInstance = new SnippetCompute(this.runnerService, this.cdr);
+              snapshotInstance.id = this.id;
+              snapshotInstance.value = this.value;
+              snapshotInstance.output = this.output;
+
+              this.finishedProcessing.emit(snapshotInstance);
             }
           }
           // If neither error nor output is present for this ID, this.output remains unchanged.

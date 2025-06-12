@@ -243,9 +243,15 @@ export class Sheet { // Removed OnInit, OnDestroy as file manager logic is moved
    * @param snippetComputeInstance The SnippetCompute instance that finished processing.
    */
   public handleFinishedProcessing(snippetComputeInstance: SnippetCompute): void {
+    // Create a new array with the updated snippetComputeInstance
+    const updatedSnippets = this.snippets.map(snippet =>
+      snippet.id === snippetComputeInstance.id ? snippetComputeInstance : snippet
+    );
+
     const menuItem: MenuItem = {
       label: "Execution " + this.executionCounter,
-      snippets: [...this.snippets] // Create a shallow copy
+      // Use the updatedSnippets array, ensuring it's a new copy for the MenuItem
+      snippets: [...updatedSnippets]
     };
     this.newMenuItem.emit(menuItem);
     this.executionCounter++;

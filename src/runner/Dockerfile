@@ -22,7 +22,7 @@ RUN apk add --no-cache \
     ruby \
     php \
     openjdk21-jdk \
-    lua \
+    lua5.4 \
     R \
     gawk \
     tcl \

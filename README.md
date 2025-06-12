@@ -21,13 +21,14 @@ This is an Angular web application project designed to create, manage, and run t
     * `#!/usr/bin/env zsh`
     * `#!/usr/bin/env tcsh`
     * `#!/usr/bin/env python3`
+    * `#!/usr/bin/env node`
     * `#!/usr/bin/env perl`
     * `#!/usr/bin/env ruby`
     * `#!/usr/bin/env php`
-    * `#!/usr/bin/env java` (for executable Java scripts)
-    * `#!/usr/bin/env lua`
+    * `#!/usr/bin/java --source 21`
+    * `#!/usr/bin/env lua5.4`
     * `#!/usr/bin/env Rscript`
-    * `#!/usr/bin/env awk`
+    * `#!/usr/bin/gawk -f`
     * `#!/usr/bin/env tclsh`
     * `#!/usr/bin/env expect`
     * `#!/usr/bin/env ts-node`

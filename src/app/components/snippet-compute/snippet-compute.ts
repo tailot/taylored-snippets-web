@@ -14,31 +14,6 @@ import { SnippetText } from '../snippet-text/snippet-text';
  */
 import { RunnerService, SnippetOutput } from '../../services/runner.service';
 
-/**
- * A list of valid interpreters that can be specified in the shebang line of a compute snippet.
- */
-export const VALID_INTERPRETERS = [
-  'awk',
-  'bash',
-  'expect',
-  'gawk',
-  'java',
-  'lua',
-  'lua5.4',
-  'node',
-  'perl',
-  'php',
-  'python',
-  'python3',
-  'Rscript',
-  'ruby',
-  'sed',
-  'sh',
-  'tcl',
-  'tcsh',
-  'ts-node',
-  'zsh',
-];
 
 /**
  * The SnippetCompute component allows users to input and execute code.
@@ -110,41 +85,6 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
   }
 
   /**
-   * Validates the snippet content, specifically checking for a valid shebang line.
-   * The play button is disabled if the shebang is missing, invalid, or if there's no code after it.
-   * It normalizes escaped newlines in the code.
-   */
-  onSnippetChange(): void {
-    this.isPlayButtonDisabled = true;
-
-    if (!this.value) {
-      return;
-    }
-
-    // Normalize escaped newlines that might come from test inputs or other sources
-    const processedCode = this.value.replace(/\\n/g, '\n');
-    const lines = processedCode.split('\n');
-
-    // Shebang must be on the first line
-    if (lines.length > 0) {
-      const firstLine = lines[0].trimStart();
-      if (firstLine.startsWith('#!')) {
-        // Regex ensures interpreter is at the end of the firstLine
-        const shebangMatch = firstLine.match(/^#!(?:\/(?:usr\/)?bin\/env\s+|\/(?:usr\/|usr\/local\/)?bin\/)?([a-zA-Z0-9._-]+)$/);
-
-        if (shebangMatch && shebangMatch[1]) {
-          const interpreter = shebangMatch[1];
-          if (VALID_INTERPRETERS.includes(interpreter)) {
-            if (lines.length > 1) {
-              this.isPlayButtonDisabled = false;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /**
    * Emits an update event whenever the text content of the snippet changes.
    */
   onTextChange(): void {
@@ -169,7 +109,8 @@ export class SnippetCompute implements Snippet, OnInit, OnDestroy {
     this.subscriptions.add(
       this.runnerService.isRunnerReady$.subscribe(isReady => {
         this.isRunnerReady = isReady;
-        // Future: this.updatePlayButtonState(); (or similar if combined with snippet validity)
+        this.isPlayButtonDisabled = !isReady; // Enable button if runner is ready, disable otherwise
+        this.cdr.detectChanges(); // Ensure the view updates
       })
     );
 

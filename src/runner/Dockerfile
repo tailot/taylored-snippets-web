@@ -21,7 +21,7 @@ RUN apk add --no-cache \
     perl \
     ruby \
     php \
-    openjdk17-jre-headless \
+    openjdk21-jdk \
     lua \
     R \
     gawk \

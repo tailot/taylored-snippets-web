@@ -30,6 +30,22 @@ const INACTIVITY_TIMEOUT_SECONDS = parseInt(process.env.INACTIVITY_TIMEOUT_SECON
  */
 const CLEANUP_INTERVAL_SECONDS = 30;
 
+/**
+ * @const {number} NUM_MAPPED_PORTS
+ * @description The number of ports to map for each runner, starting from container port 3000 downwards.
+ * Read from the `FREE_DOORS` environment variable. Defaults to 0 if not set or invalid.
+ */
+let NUM_MAPPED_PORTS = 0;
+const freeDoorsEnv = process.env.FREE_DOORS;
+if (freeDoorsEnv !== undefined) {
+    const parsed = parseInt(freeDoorsEnv, 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+        NUM_MAPPED_PORTS = parsed;
+    } else {
+        console.warn(`[Orchestrator Config] FREE_DOORS environment variable ("${freeDoorsEnv}") is invalid. Must be a non-negative integer. Defaulting to 0.`);
+    }
+}
+
 const app = express();
 const port = 3001;
 
@@ -142,13 +158,34 @@ app.post('/api/runner/provision', async (req, res, next) => {
 
   let allocatedPort;
   let containerInstance;
+  const portBindings = {};
   const imageName = 'runner-image';
 
   try {
     if (networkMode !== 'none') {
-        allocatedPort = await getAvailablePort();
+        if (NUM_MAPPED_PORTS >= 0) {
+            // Map the primary port (container 3000)
+            try {
+                allocatedPort = await getAvailablePort();
+                portBindings['3000/tcp'] = [{ HostPort: allocatedPort.toString() }];
+            } catch (portError) {
+                console.error(`[Provisioning Error] Failed to get an available host port for primary container port 3000: ${portError.message}`);
+                throw new Error(`Failed to secure host port for primary container port 3000. Provisioning aborted.`);
+            }
+
+            // Map additional N-1 ports (if NUM_MAPPED_PORTS > 1)
+            for (let i = 1; i <= NUM_MAPPED_PORTS; i++) {
+                const containerPortToMap = 3000 - i;
+                if (containerPortToMap <= 0) {
+                    console.warn(`[Provisioning Warning] Skipping mapping for non-positive container port: ${containerPortToMap}`);
+                    break;
+                }
+                const hostPortToMap = containerPortToMap;
+                portBindings[`${containerPortToMap}/tcp`] = [{ HostPort: hostPortToMap.toString() }];
+            }
+        }
+        // If NUM_MAPPED_PORTS is 0, allocatedPort remains undefined, portBindings remains empty.
     }
-    
 
     try {
         await docker.getImage(imageName).inspect();
@@ -165,29 +202,24 @@ app.post('/api/runner/provision', async (req, res, next) => {
       Labels: {
         'taylored-runner-session-id': sessionId
       }
+      // HostConfig will be populated based on networkMode and NUM_MAPPED_PORTS
     };
 
     if (networkMode === 'none') {
-        containerConfig.HostConfig = {
-            NetworkMode: 'none'
-        };
-    } else if (networkMode) {
-        containerConfig.HostConfig = {
-            PortBindings: {
-                '3000/tcp': [{ HostPort: allocatedPort.toString() }]
-            }
-        };
-        containerConfig.NetworkingConfig = {
-            EndpointsConfig: {
-                [networkMode]: {}
-            }
-        };
-    } else {
-        containerConfig.HostConfig = {
-            PortBindings: {
-                '3000/tcp': [{ HostPort: allocatedPort.toString() }]
-            }
-        };
+        containerConfig.HostConfig = { NetworkMode: 'none' };
+        // allocatedPort would be undefined, portBindings is empty.
+        // The endpoint response correctly reflects 'N/A'.
+    } else { // Covers default bridge and specified networkMode
+        containerConfig.HostConfig = { PortBindings: portBindings };
+        if (networkMode) { // If a specific network (e.g., custom bridge) is provided
+            containerConfig.NetworkingConfig = {
+                EndpointsConfig: {
+                    [networkMode]: {}
+                }
+            };
+        }
+        // If networkMode is falsy (e.g., undefined), it uses default bridge,
+        // HostConfig.PortBindings (even if empty for NUM_MAPPED_PORTS=0) is sufficient.
     }
 
     containerInstance = await docker.createContainer(containerConfig);
@@ -199,7 +231,7 @@ app.post('/api/runner/provision', async (req, res, next) => {
 
     const runnerDetails = {
         containerId: containerId,
-        port: allocatedPort,
+        port: allocatedPort, // This is the host port for container's 3000. Undefined if no ports mapped.
         container: containerInstance,
         sessionId: sessionId,
         lastActivityTime: Date.now()
@@ -213,7 +245,8 @@ app.post('/api/runner/provision', async (req, res, next) => {
 
     res.status(201).json({
       message: 'Runner provisioned successfully.',
-      endpoint: allocatedPort ? `${RUNNERS_HOST}:${allocatedPort}` : 'N/A (isolated network mode)',
+      // allocatedPort will be undefined if networkMode is 'none' or NUM_MAPPED_PORTS is 0
+      endpoint: allocatedPort ? `${RUNNERS_HOST}:${allocatedPort}` : 'N/A (isolated network or no ports mapped)',
       sessionId: sessionId
     });
 
@@ -223,11 +256,12 @@ app.post('/api/runner/provision', async (req, res, next) => {
         const contState = await containerInstance.inspect().catch(() => null);
         if (contState) {
             if (contState.State.Running) {
-                 await containerInstance.stop().catch(e => {});
+                 await containerInstance.stop().catch(e => console.error(`Error stopping container during cleanup: ${e.message}`));
             }
-            await containerInstance.remove({ force: true }).catch(e => {});
-        }
+            await containerInstance.remove({ force: true }).catch(e => console.error(`Error removing container during cleanup: ${e.message}`));
+        };
       } catch (cleanupErr) {
+        console.error(`Error during container cleanup: ${cleanupErr.message}`);
       }
     }
     activeRunners.delete(sessionId);
@@ -444,6 +478,7 @@ app.listen(port, () => {
   console.log(`Orchestrator will cleanup inactive runners every ${CLEANUP_INTERVAL_SECONDS} seconds.`);
   console.log(`REUSE_RUNNER_MODE is ${REUSE_RUNNER_MODE ? 'enabled' : 'disabled'}.`);
   console.log(`RUNNERS_HOST is set to '${RUNNERS_HOST}'.`);
+  console.log(`Number of ports to map per runner (FREE_DOORS): ${NUM_MAPPED_PORTS}`);
 });
 
 // Set up a recurring task to clean up inactive runners.

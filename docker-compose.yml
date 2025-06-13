@@ -56,6 +56,7 @@ services:
     environment:
       - NODE_ENV=production
       - REUSE_RUNNER_MODE=true
+      - FREE_DOORS=0 #max 20
     profiles: ["singletenant"]
     depends_on:
       runner-builder:

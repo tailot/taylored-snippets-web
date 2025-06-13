@@ -16,6 +16,9 @@ This is an Angular web application project designed to create, manage, and run t
     - Multitenant Mode: Provides a fully isolated Docker execution environment for each user session, managed by an orchestrator service. This is ideal for production and tests requiring complete isolation.
     - Singletenant Mode: Uses a single, shared runner instance, suitable for local development.
 - **Script Execution**: Compute snippets can execute code. Standard output and errors are displayed directly in the user interface.
+- **Arbitrary Port Mapping**: In singletenant mode, it's possible to map a specified number of arbitrary ports from the host to the runner container by setting the `FREE_DOORS` environment variable (e.g., `FREE_DOORS=N`) for the orchestrator service. This allows services within the runner to be exposed externally. The mapping works as follows:
+    - The primary service port of the runner (port `3000` inside the container) is mapped to a dynamically allocated random port on the host. This is the main endpoint for the runner.
+    - If `N > 1`, then `N-1` additional ports are mapped 1-to-1 from the host to the container, in descending order starting from port `2999`. For example, if `FREE_DOORS=3`, port `2999` on the host maps to `2999` in the container, and port `2998` on the host maps to `2998` in the container.
 - **Supported Interpreters**: The following interpreters are supported via shebangs in the runner environment:
     * `#!/usr/bin/env bash`
     * `#!/usr/bin/env zsh`
@@ -72,8 +75,8 @@ This mode is ideal for production or for tests that require complete session iso
 
 2.  This command will start the following services:
     * `frontend-multitenant`: The Angular application, accessible at `http://localhost:80`.
-    * `orchestrator-multitenant`: The Node.js orchestrator service (see `src/orchestrator/README.md`). Listens on port `3001` and manages a separate Docker runner instance for each user session (`REUSE_RUNNER_MODE=false` is set for this service in `docker-compose.yml`).
-    * `runner-builder`: This service builds the `runner-image` (see `src/runner/README.md`) and then exits.
+    * `orchestrator-multitenant`: The Node.js orchestrator service (see `src/orchestrator/README.md`). Listens on port `3001` and manages a separate Docker runner instance for each user session (`REUSE_RUNNER_MODE=false` is set for this service in `docker-compose.yml`). It can be configured with the `FREE_DOORS` environment variable to enable arbitrary port (maximum 20) mapping to the runner containers.
+    * `runner-builder`: This service builds the `runner-image` (see `src/runner/README.md`) and then exits. The `runner-image` includes the necessary configurations for port mapping when `FREE_DOORS` is utilized.
 
 ### Singletenant Mode
 

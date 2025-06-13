@@ -48,7 +48,7 @@ ENV NODE_ENV=production
 
 # Expose port 3000, which is the default port the Node.js runner application listens on.
 # This aligns the Dockerfile with the orchestrator's configuration.
-EXPOSE 3000
+EXPOSE 2979-3000
 
 # Specify the command that will be executed when the container starts.
 # The path to 'runner.js' has been corrected to reflect its location within

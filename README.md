@@ -65,10 +65,10 @@ This image is automatically built by one of the `runner-builder-*` services (e.g
 
 You can launch the application using Docker Compose profiles, selecting the tenancy mode (multitenant or singletenant) and the desired runner OS (alpine, ubuntu, or debian).
 
-The application now supports different runner operating systems. The `src/runner` directory contains three Dockerfiles:
-- `Dockerfile.alpine`: For building a runner image based on Alpine Linux.
-- `Dockerfile.ubuntu`: For building a runner image based on Ubuntu.
-- `Dockerfile.debian`: For building a runner image based on Debian.
+The application now supports different runner operating systems. The `src/runner` directory contains three Dockerfiles, all configured to use Node.js 22:
+- `Dockerfile.alpine`: For building a runner image based on Node.js 22 and Alpine Linux.
+- `Dockerfile.ubuntu`: For building a runner image based on Node.js 22 and Ubuntu (slim).
+- `Dockerfile.debian`: For building a runner image based on Node.js 22 and Debian (slim).
 
 The `docker-compose.yml` file has been updated to support these different OS runners through profiles.
 

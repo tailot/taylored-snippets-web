@@ -1,4 +1,6 @@
-FROM node:18-alpine
+FROM node:22-alpine
+
+ENV NODE_ENV=production
 
 # Install basic tools and shells
 RUN apk add --no-cache bash zsh tcsh curl gnupg ca-certificates git
@@ -13,4 +15,5 @@ WORKDIR /usr/src/runner
 COPY package*.json ./
 RUN npm ci
 COPY . .
+EXPOSE 2979-3000
 CMD ["node", "runner.js"]

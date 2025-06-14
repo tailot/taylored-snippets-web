@@ -1,0 +1,36 @@
+FROM node:18-slim
+
+# Install basic tools and shells
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    zsh \
+    tcsh \
+    curl \
+    gnupg \
+    ca-certificates \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install scripting languages and runtime environments
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    perl \
+    ruby \
+    php-cli \
+    openjdk-21-jdk-headless \
+    lua5.4 \
+    r-base \
+    gawk \
+    tcl \
+    expect \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install global Node.js tools
+RUN npm install -g typescript ts-node taylored
+
+WORKDIR /usr/src/runner
+COPY package*.json ./
+RUN npm ci
+COPY . .
+CMD ["node", "runner.js"]

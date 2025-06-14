@@ -1,0 +1,16 @@
+FROM node:18-alpine
+
+# Install basic tools and shells
+RUN apk add --no-cache bash zsh tcsh curl gnupg ca-certificates git
+
+# Install scripting languages and runtime environments
+RUN apk add --no-cache python3 py3-pip perl ruby php openjdk21-jdk lua5.4 R gawk tcl expect
+
+# Install global Node.js tools
+RUN npm install -g typescript ts-node taylored
+
+WORKDIR /usr/src/runner
+COPY package*.json ./
+RUN npm ci
+COPY . .
+CMD ["node", "runner.js"]

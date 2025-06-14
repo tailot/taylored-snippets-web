@@ -18,7 +18,7 @@ This is an Angular web application project designed to create, manage, and run t
 - **Script Execution**: Compute snippets can execute code. Standard output and errors are displayed directly in the user interface.
 - **Arbitrary Port Mapping**: In singletenant mode, it's possible to map a specified number of arbitrary ports from the host to the runner container by setting the `FREE_DOORS` environment variable (e.g., `FREE_DOORS=N`) for the orchestrator service. This allows services within the runner to be exposed externally. The mapping works as follows:
     - The primary service port of the runner (port `3000` inside the container) is mapped to a dynamically allocated random port on the host. This is the main endpoint for the runner.
-    - If `N > 1`, then `N-1` additional ports are mapped 1-to-1 from the host to the container, in descending order starting from port `2999`. For example, if `FREE_DOORS=3`, port `2999` on the host maps to `2999` in the container, and port `2998` on the host maps to `2998` in the container.
+    - If `N >= 1`, then `N-1` additional ports are mapped 1-to-1 from the host to the container, in descending order starting from port `2999`. For example, if `FREE_DOORS=2`, port `2999` on the host maps to `2999` in the container, and port `2998` on the host maps to `2998` in the container.
 - **Supported Interpreters**: The following interpreters are supported via shebangs in the runner environment:
     * `#!/usr/bin/env bash`
     * `#!/usr/bin/env zsh`
@@ -52,7 +52,7 @@ The repository is organized as follows:
 
 Before you start, make sure you have the following installed:
 
-* **Node.js**: Version 20 is recommended.
+* **Node.js**: Version 22 is recommended.
 * **npm**: Is installed along with Node.js.
 * **Docker and Docker Compose**: Essential for running the application with its backend services.
 

@@ -1,131 +1,72 @@
-# Ancore YAML per non ripetere codice (DRY principle)
-x-runner-builder-base: &runner-builder-base
+x-frontend-common: &frontend-common
   build:
-    context: src/runner
+    context: .
+    dockerfile: ./Dockerfile
+    args:
+      production: true
+      orchestrator: 'http://localhost:4001'
+      #WARNING: specify the orchestrator address
+  image: taylored-snippets-web/frontend:latest
+  ports:
+    - "80:80"
 
-x-orchestrator-base: &orchestrator-base
-  build: ./src/orchestrator
-  restart: unless-stopped
+x-orchestrator-common: &orchestrator-common
+  build:
+    context: ./src/orchestrator
+    dockerfile: ./Dockerfile
+  image: taylored-snippets-web/orchestrator:latest
+  ports:
+    - "3001:3001"
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  command: node orchestrator.js
+  # depends_on will be added specifically for each profile
 
 services:
-  # === BUILDERS ===
-  runner-builder-alpine:
-    <<: *runner-builder-base
-    image: runner-image
-    profiles: ["alpine"]
+  # --- SINGLETENANT PROFILE SERVICES ---
+  frontend-singletenant:
+    <<: *frontend-common
+    profiles: ["singletenant"]
+    depends_on:
+      orchestrator-singletenant:
+        condition: service_started
+
+  # --- MULTITENANT PROFILE SERVICES ---
+  frontend-multitenant:
+    <<: *frontend-common
+    profiles: ["multitenant"]
+    depends_on:
+      orchestrator-multitenant:
+        condition: service_started
+
+  orchestrator-multitenant:
+    <<: *orchestrator-common
+    environment:
+      - NODE_ENV=production
+      - REUSE_RUNNER_MODE=false
+      - RUNNERS_HOST=http://localhost
+      #WARNING: specify the RUNNERS_HOST address
+    profiles: ["multitenant"]
+    depends_on:
+      runner-builder:
+        condition: service_started
+
+  orchestrator-singletenant:
+    <<: *orchestrator-common
+    environment:
+      - NODE_ENV=production
+      - REUSE_RUNNER_MODE=true
+      - FREE_DOORS=0 #max 20
+    profiles: ["singletenant"]
+    depends_on:
+      runner-builder:
+        condition: service_started
+
+  # --- RUNNER SERVICE ---
+  runner-builder:
     build:
-      dockerfile: Dockerfile.alpine
-
-  runner-builder-ubuntu:
-    <<: *runner-builder-base
+      context: ./src/runner
+      dockerfile: ./Dockerfile
+    # This image name is crucial. The orchestrator will use it to start new runners.
     image: runner-image
-    profiles: ["ubuntu"]
-    build:
-      dockerfile: Dockerfile.ubuntu
-
-  runner-builder-debian:
-    <<: *runner-builder-base
-    image: runner-image
-    profiles: ["debian"]
-    build:
-      dockerfile: Dockerfile.debian
-
-  # === ORCHESTRATORS ===
-  # --- Single Tenant ---
-  orchestrator-singletenant-alpine:
-    <<: *orchestrator-base
-    container_name: orchestrator-singletenant
-    profiles: ["singletenant", "alpine"]
-    environment:
-      - TENANCY_MODE=singletenant
-      - RUNNER_IMAGE=runner-image
-    depends_on:
-      runner-builder-alpine:
-        condition: service_completed_successfully
-    ports:
-      - "3000:3000"
-
-  orchestrator-singletenant-ubuntu:
-    <<: *orchestrator-base
-    container_name: orchestrator-singletenant
-    profiles: ["singletenant", "ubuntu"]
-    environment:
-      - TENANCY_MODE=singletenant
-      - RUNNER_IMAGE=runner-image
-    depends_on:
-      runner-builder-ubuntu:
-        condition: service_completed_successfully
-    ports:
-      - "3000:3000"
-
-  orchestrator-singletenant-debian:
-    <<: *orchestrator-base
-    container_name: orchestrator-singletenant
-    profiles: ["singletenant", "debian"]
-    environment:
-      - TENANCY_MODE=singletenant
-      - RUNNER_IMAGE=runner-image
-    depends_on:
-      runner-builder-debian:
-        condition: service_completed_successfully
-    ports:
-      - "3000:3000"
-
-  # --- Multi Tenant ---
-  orchestrator-multitenant-alpine:
-    <<: *orchestrator-base
-    container_name: orchestrator-multitenant
-    profiles: ["multitenant", "alpine"]
-    environment:
-      - TENANCY_MODE=multitenant
-      - RUNNER_IMAGE=runner-image
-    depends_on:
-      runner-builder-alpine:
-        condition: service_completed_successfully
-    ports:
-      - "3000:3000"
-
-  orchestrator-multitenant-ubuntu:
-    <<: *orchestrator-base
-    container_name: orchestrator-multitenant
-    profiles: ["multitenant", "ubuntu"]
-    environment:
-      - TENANCY_MODE=multitenant
-      - RUNNER_IMAGE=runner-image
-    depends_on:
-      runner-builder-ubuntu:
-        condition: service_completed_successfully
-    ports:
-      - "3000:3000"
-
-  orchestrator-multitenant-debian:
-    <<: *orchestrator-base
-    container_name: orchestrator-multitenant
-    profiles: ["multitenant", "debian"]
-    environment:
-      - TENANCY_MODE=multitenant
-      - RUNNER_IMAGE=runner-image
-    depends_on:
-      runner-builder-debian:
-        condition: service_completed_successfully
-    ports:
-      - "3000:3000"
-
-  # === FRONTEND ===
-  web-frontend:
-    image: nginx:1.25.3-alpine
-    profiles:
-      - singletenant
-      - multitenant
-    ports:
-      - "4200:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./dist/taylored-snippets-web:/usr/share/nginx/html
-    depends_on:
-      - orchestrator-singletenant-alpine
-      - orchestrator-singletenant-ubuntu
-      - orchestrator-singletenant-debian
-      - orchestrator-multitenant-alpine
-      - orchestrator-multitenant-ubuntu
-      - orchestrator-multitenant-debian
+    # No profiles, ports, environment, or command for a builder service

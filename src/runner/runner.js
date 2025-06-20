@@ -101,7 +101,7 @@ io.on('connection', (socket) => {
       await git.add(xmlFilePath);
       await git.commit('Add runner.xml');
 
-      const tayloredProcess = spawn('taylored', ['--automatic', 'xml', 'main'], { cwd: tempDirPath });
+      const tayloredProcess = spawn('taylo', ['--automatic', 'xml', 'main'], { cwd: tempDirPath });
 
       tayloredProcess.stdout.on('data', (data) => {
         const output = data.toString();

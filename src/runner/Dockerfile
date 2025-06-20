@@ -29,7 +29,7 @@ RUN apk add --no-cache \
     expect
 
 # Install global Node.js tools like TypeScript and ts-node.
-RUN npm install -g typescript ts-node taylored
+RUN npm install -g typescript ts-node taylo
 
 # Set the working directory inside the container.
 WORKDIR /app

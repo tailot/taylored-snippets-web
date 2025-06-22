@@ -12,7 +12,7 @@
   "dependencies": {
     "simple-git": "^3.28.0",
     "socket.io": "^4.8.1",
-    "taylo": "^7.0.16",
+    "taylo": "^8.0.7",
     "tmp": "^0.2.3"
   }
 }
